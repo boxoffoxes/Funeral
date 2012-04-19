@@ -1,0 +1,105 @@
+:: DOCTYPE    = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+   "http://www.w3.org/TR/html4/loose.dtd">'
+:: a          = SELF [ _close=1 ]
+:: abbr       = SELF []
+:: acronym    = SELF []
+:: address    = SELF []
+:: area       = SELF []
+:: b          = SELF []
+:: base       = SELF []
+:: bdo        = SELF []
+:: big        = SELF []
+:: blockquote = SELF [ _block=1 _block=1 ]
+:: body       = SELF [ _close=1 _block=1 ]
+:: br         = SELF []
+:: button     = SELF []
+:: caption    = SELF []
+:: cite       = SELF []
+:: code       = SELF []
+:: col        = SELF []
+:: colgroup   = SELF [ _block=1 ]
+:: dd         = SELF []
+:: del        = SELF []
+:: dfn        = SELF []
+:: div        = SELF [ _close=1 _block=1 ]
+:: dl         = SELF [ _block=1 ]
+:: dt         = SELF []
+:: em         = SELF []
+:: fieldset = SELF []
+:: form = SELF [ _block=1 ]
+:: frame = SELF []
+:: frameset = SELF []
+:: h1 = SELF []
+:: h2 = SELF []
+:: h3 = SELF []
+:: h4 = SELF []
+:: h5 = SELF []
+:: h6 = SELF []
+:: head    = SELF [ _close=1  _block=1 ]
+:: hr = SELF []
+:: html    = SELF [ xmlns="http://www.w3.org/1999/xhtml" _block=1 _close=1 ]
+:: i = SELF []
+:: iframe = SELF []
+:: img = SELF []
+:: input = SELF []
+:: ins = SELF []
+:: kbd = SELF []
+:: label = SELF []
+:: legend = SELF []
+:: li = SELF []
+:: link = SELF []
+:: map = SELF []
+:: meta    = SELF []
+:: noframes = SELF []
+:: noscript = SELF []
+:: object = SELF []
+:: ol = SELF [ _block=1 ]
+:: optgroup = SELF [ _block=1 ]
+:: option = SELF []
+:: p = SELF [ _close=1 ]
+:: param = SELF []
+:: pre = SELF [ _block=1 ]
+:: q = SELF []
+:: samp = SELF []
+:: script = SELF [ _close=1 _block=1  ]
+:: select = SELF [ _close=1 _block=1  ]
+:: small = SELF []
+:: span = SELF []
+:: strong = SELF []
+:: style = SELF []
+:: sub = SELF []
+:: sup = SELF []
+:: table = SELF [ _close=1 _block=1  ]
+:: tbody = SELF [ _block=1 ]
+:: td = SELF [ _close=1 ]
+:: textarea = SELF [ _close=1 ]
+:: tfoot = SELF [ _block=1 ]
+:: th = SELF [ _close=1 ]
+:: thead = SELF [ _block=1 ]
+:: title   = SELF [ _close=1 ]
+:: tr = SELF [ _close=1 _block=1  ]
+:: tt = SELF []
+:: ul = SELF [ _block=1 ]
+:: var = SELF []
+
+format_as_block = [ "blockquote",
+					"body",
+					"colgroup",
+					"div",
+					"dl",
+					"form",
+					"head",
+					"html",
+					"ol",
+					"optgroup",
+					"pre",
+					"script",
+					"select",
+					"table",
+					"tbody",
+					"tfoot",
+					"thead",
+					"tr",
+					"ul" ]
+
+

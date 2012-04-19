@@ -39,7 +39,7 @@ attribute = pure (,) <*> label <| keyword "=" <*> ( stringLiteral <|> label )
 
 
 parse :: String -> [Exp]
-parse s = 
+parse s = exp
 	where
 		(junk, exp) = head $ concatMap snd $ maybeSome expr s
 

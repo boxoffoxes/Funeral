@@ -8,6 +8,9 @@ import List as L
 label :: Parser String
 label = token $ atLeastOne symbolChar
 
+reference :: Parser String
+reference = char '#' |> label
+
 
 expr :: Parser Exp
 expr =	pure Tag <*> label <*> expr
@@ -15,14 +18,19 @@ expr =	pure Tag <*> label <*> expr
 	<|> pure Mac <*> string ":" |> label <*> stringLiteral
 	<|> pure Lit <*> stringLiteral
 	<|> pure Att <*> token attribute
+	<|> pure Opt <*> string "?" |> label
 	<|> pure Mul <*> keyword "[" |> maybeSome expr <| keyword "]"
 
 
 attributes :: Parser [Attr]
 attributes = maybeSome (token attribute) <| maybeOne (keyword ";")
 
+value :: Parser Value
+value = pure Ref <*> reference
+	<|> pure Val <*> ( label <|> stringLiteral )
+
 attribute :: Parser Attr
-attribute = pure (,) <*> label <| keyword "=" <*> ( stringLiteral <|> label )
+attribute = pure (,) <*> label <| keyword "=" <*> value
 
 
 -- tag :: Parser Exp

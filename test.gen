@@ -1,9 +1,14 @@
 :import "xhtml10.gen"
 
+:: myLink = a[ ?attr class=link span[ ?content ] ]
+
+
+DOCTYPE []
 html[
+	head[]
+	body[
+		p "Hello world"
 
-"Hello world"
-
-'testing'
-
+		p 'testing'
+	]
 ]

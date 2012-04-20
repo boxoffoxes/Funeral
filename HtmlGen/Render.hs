@@ -53,8 +53,48 @@ preProcess (Mul es) = do
 		return $ Mul es'
 preProcess e = do return e
 
+
+render :: Library -> Exp -> String
+render l (Lit s) = s
+render l (Mul es) = concatMap (render l) es
+render l (Tag id e) = renderTag l id e
+render _ _ = ""
+
+
+renderTag :: Library -> Id -> Exp -> String
+renderTag l id e = "<" ++ id ++ attrStr ++ closure
+	where
+		attrs = findAttrs e
+		-- flags = findOpts e
+		attrStr = renderAttrs attrs
+		content = render l e
+		closure = case content of
+			"" -> " />"
+			_  -> ">" ++ content ++ "</" ++ id ++ ">"
+
+renderAttrs :: [Attr] -> String
+renderAttrs as = concatMap renderAttr as
+	where
+		renderAttr (attr, val) = " " ++ attr ++ "=\"" ++ (renderVal val) ++ "\""
+
+		renderVal (Val s) = s
+		renderVal (Ref r) = case (lookup r as) of
+			Just (Val v)  -> v
+			Just r'@(Ref _) -> renderVal r'
+			Nothing       -> error $ "Reference to undefined attribute '" ++ r ++ "'\n"
+
+
+findAttrs :: Exp -> [Attr]
+findAttrs (Att a) = [a]
+findAttrs (Mul es) = concatMap findAttrs es
+findAttrs _ = []
+
+-- findOpts :: Exp -> [Option]
+-- findOpts (Opt s) -> [
+
+
+
 {-
-render :: Library -> Exp -> IO String
 render _   (Lit s) = IO s
 render _   (Mac id arg)
 	| id == "insert"  = readFile arg
@@ -64,9 +104,6 @@ render _   (Mac id arg)
 -- 	| otherwise    = map (render lib) 
 render _ _ = IO ""
 -}
-
-renderAttrib :: Attr -> String
-renderAttrib (attr, val) = " " ++ attr ++ "=\"" ++ val ++ "\""
 
 -- renderTag :: Library -> Exp 
 

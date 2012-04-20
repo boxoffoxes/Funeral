@@ -12,8 +12,7 @@ main = do
 	args <- getArgs
 	tree <- preProcess (Mac "import" $ head args)
 	let lib = buildLibrary tree
-	let tree = stripDefs tree
-	print lib
-	print tree
+	let tree' = stripDefs tree
+	print $ render lib tree'
 
 

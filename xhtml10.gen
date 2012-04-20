@@ -82,24 +82,4 @@
 :: ul = SELF [ _block=1 ]
 :: var = SELF []
 
-format_as_block = [ "blockquote",
-					"body",
-					"colgroup",
-					"div",
-					"dl",
-					"form",
-					"head",
-					"html",
-					"ol",
-					"optgroup",
-					"pre",
-					"script",
-					"select",
-					"table",
-					"tbody",
-					"tfoot",
-					"thead",
-					"tr",
-					"ul" ]
-
 

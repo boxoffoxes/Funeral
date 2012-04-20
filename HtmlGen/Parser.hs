@@ -3,18 +3,19 @@ module HtmlGen.Parser where
 import HtmlGen.ParseLib
 import HtmlGen.Syntax
 
+import List as L
+
 label :: Parser String
-label = token $ atLeastOne alphanum
+label = token $ atLeastOne symbolChar
 
 
 expr :: Parser Exp
-expr =	pure Tag <*> label <*> keyword "[" |> attributes <*> maybeSome expr <| keyword "]"
-	<|> pure Def <*> keyword "::" |> label <| keyword "=" <*> keyword "{" |> atLeastOne expr <| keyword "}"
-	<|> pure Def <*> keyword "::" |> label <| keyword "=" <*> exactlyOne expr 
+expr =	pure Tag <*> label <*> expr
+	<|> pure Def <*> keyword "::" |> label <| keyword "=" <*> expr
 	<|> pure Mac <*> string ":" |> label <*> stringLiteral
 	<|> pure Lit <*> stringLiteral
---	<|> pure Tag <*> label <*> pure [] <*> (exactlyOne $ pure Lit <*> stringLiteral)
---	<|> pure Tag <*> label <*> pure [] <*> bracketed $ pure Lit <*>
+	<|> pure Att <*> token attribute
+	<|> pure Mul <*> keyword "[" |> maybeSome expr <| keyword "]"
 
 
 attributes :: Parser [Attr]
@@ -39,31 +40,8 @@ attribute = pure (,) <*> label <| keyword "=" <*> ( stringLiteral <|> label )
 
 
 parse :: String -> [Exp]
-parse s = exp
+parse s = if junk /= "" then error ("Parse error at '" ++ take 30 junk ++ "...'\n") else exps
 	where
-		(junk, exp) = head $ concatMap snd $ maybeSome expr s
-
-
-
-coreLibrary = []
-
-buildLibrary :: [Exp] -> Library
-buildLibrary es = map parseDef es ++ coreLibrary
-
-parseDef :: Exp -> Definition
-parseDef (Def id es) = (id, es)
-
-render :: Library -> Exp -> String
-render _   (Lit s) = s
-render lib (Tag id attrs content) = "<" ++ id ++ attrStr ++ ">" ++ concatMap (render lib) content ++ "</" ++ id ++ ">"
-	where
-		attrStr = concatMap renderAttrib attrs
---		(_, exps) = lookup lib id
-render _ _ = ""
-
-renderAttrib :: Attr -> String
-renderAttrib (attr, val) = " " ++ attr ++ "=\"" ++ val ++ "\""
-
-
+		(junk, exps) = head $ maybeSome expr s
 
 

@@ -1,0 +1,9 @@
+:import "xhtml10.gen"
+
+html[
+
+"Hello world"
+
+'testing'
+
+]

@@ -8,7 +8,7 @@ data Exp = Tag Id Exp
 		 | Att Attr
 		 | Mul [Exp] -- multiple expressions
 		 | Opt String
-	deriving Show
+	deriving Show -- TODO: add Comment syntax
 
 data Value = Val String
 		   | Ref String

@@ -86,7 +86,7 @@ optSpaces = maybeSome space
 
 
 token :: Parser a -> Parser a
-token p = p <| optSpaces
+token p = p <| optSpaces -- TODO: extend this to preserve leading spaces?
 
 keyword :: String -> Parser String
 keyword = token . string

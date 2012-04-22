@@ -18,7 +18,7 @@ expr =	pure Tag <*> label <*> expr
 	<|> pure Mac <*> string ":" |> label <*> stringLiteral
 	<|> pure Lit <*> stringLiteral
 	<|> pure Att <*> token attribute
-	<|> pure Opt <*> string "?" |> label
+	<|> pure Prim <*> string "?" |> label
 	<|> pure Mul <*> keyword "[" |> maybeSome expr <| keyword "]"
 
 

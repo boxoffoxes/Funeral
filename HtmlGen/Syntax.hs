@@ -7,11 +7,15 @@ data Exp = Tag Id Exp
 		 | Def Id Exp
 		 | Att Attr
 		 | Mul [Exp] -- multiple expressions
-		 | Opt String
+		 | Ref Id
+		 | Pri Prim
 	deriving Show
 
+data Prim = 
+
+
 data Value = Val String
-		   | Ref String
+		   | Ref Id
 	deriving Show
 
 

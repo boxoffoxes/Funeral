@@ -5,6 +5,30 @@ import HtmlGen.Syntax
 
 import List as L
 
+
+token :: Parser a -> Parser a
+token p = p <| optSpaces
+--	where
+--		ignoreChars = maybeSome $ satisfy isSpace <|> satisfy (== ",") <|> satisfy (== ";")
+
+keyword :: String -> Parser String
+keyword = token . string
+
+{-escapeChar :: Parser String
+escapeChar = string "\\\\" <|> string "\\\"" <|> string "\\'"
+
+quotedRegion :: String -> String -> Parser String
+quotedRegion open close = string open |> maybeSome <| string close
+-}
+
+stringLiteral :: Parser String
+stringLiteral =   token ( char '"'  |> maybeSome ( satisfy (/= '"') )  <| char '"' )
+              <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
+
+-- commentLiteral :: Parser String
+-- commentLiteral =  token ( string "<!--"  |> maybeSome (  <| string "-->"
+
+
 label :: Parser String
 label = token $ atLeastOne symbolChar
 
@@ -20,6 +44,7 @@ expr =	pure Tag <*> label <*> expr
 	<|> pure Att <*> token attribute
 	<|> pure Opt <*> string "?" |> label
 	<|> pure Mul <*> keyword "[" |> maybeSome expr <| keyword "]"
+--	<|> pure Com <*> keyword "<!--" |> 
 
 
 attributes :: Parser [Attr]

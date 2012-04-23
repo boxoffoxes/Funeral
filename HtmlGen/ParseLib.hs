@@ -85,21 +85,17 @@ optSpaces = maybeSome space
 
 
 
-token :: Parser a -> Parser a
-token p = p <| optSpaces
+-- token :: Parser a -> Parser a
+-- token p = p <| optSpaces
 
-keyword :: String -> Parser String
-keyword = token . string
+-- keyword :: String -> Parser String
+-- keyword = token . string
 
-
-stringLiteral :: Parser String
-stringLiteral =   token ( char '"'  |> maybeSome ( satisfy (/= '"') )  <| char '"' )
-              <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
 -- bareString :: Parser String
 -- bareString = token ( maybeSome $ satisfy (/= ']') )
 
-bracketed :: Parser String -> Parser String
-bracketed p = keyword "[" |> p <| keyword "]"
+-- bracketed :: Parser String -> Parser String
+-- bracketed p = keyword "[" |> p <| keyword "]"
 
 

@@ -13,13 +13,13 @@
 	?blockContent: rendered content, separated by newlines (maybe indented too?)
 )
 
-:: ?emtpy = [ "<" ?id ?attr "/>" ]
-:: ?tag   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
-:: ?block = [ "<" ?id ?attr ">" ?blockContent "</" ?id ">" ]
+:: _EMTPY = [ "<" ?id ?attr "/>" ]
+:: _TAG   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
+:: _BLOCK = [ "<" ?id ?attr ">" ?blockContent "</" ?id ">" ]
 
-:: br = [ ?empty ]                 ( ->  br = [ "<" ?id ?attr "/>" ] )
-:: input = [ ?empty ; id=#name ]   ( ->  input = [ "<" ?id ?attr "/>"  ; id=#name ]
-:: label = [ ?tag ]                ( ->  label = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
+:: br = _EMTPY [  ]                 ( ->  br = [ "<" ?id ?attr "/>" ] )
+:: input = _EMPTY [ id=#name ]   ( ->  input = [ "<" ?id ?attr "/>"  ; id=#name ]
+:: label = _TAG [  ]                ( ->  label = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
 :: text  = label[ for=#id ; input[ type=text ?attr ] ; #_label ]
                                    ( ->  text  = label[ for=#id ; input[ type=text value=?content ?attr ] ; #_label ]
 

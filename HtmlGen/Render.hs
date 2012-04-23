@@ -62,10 +62,16 @@ render _ _ = ""
 
 
 renderTag :: Library -> Id -> Exp -> String
-renderTag l id e = "<" ++ id ++ attrStr ++ closure
+renderTag l id e = 
 	where
-		attrs = findAttrs e
-		-- flags = findOpts e
+		e' = renderPrims $ libraryLookup l id
+		renderPrims (Mul es) = Mul $ map renderPrims es
+		renderPrims (Prim TagId) = Lit id
+		renderPrims (Prim Attrs) = 
+		renderPrims (Prim Content) = 
+
+
+		( attrs, prims ) = decompose e
 		attrStr = renderAttrs attrs
 		content = render l e
 		closure = case content of
@@ -82,7 +88,6 @@ renderAttrs as = concatMap renderAttr as
 			Just (Val v)  -> v
 			Just r'@(Ref _) -> renderVal r'
 			Nothing       -> error $ "Reference to undefined attribute '" ++ r ++ "'\n"
-
 
 findAttrs :: Exp -> [Attr]
 findAttrs (Att a) = [a]

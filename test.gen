@@ -1,14 +1,28 @@
 :import "xhtml10.gen"
 
-:: myLink = a[ ?attr class=link span[ ?content ] ]
+(Opts:
+	?empty: defines a tag that may be empty, eg <br />
+	?inline: a regular HTML tag <p attr="val">content1 content2 content3</p>
+	?block: 
+
+	And for the special cases...
+
+	?id: the name of the tag being defined.
+	?attr: non-underscore-prefixed attributes, rendered as a string.
+	?content: rendered content, separated by spaces.
+	?blockContent: rendered content, separated by newlines (maybe indented too?)
+)
+
+:: ?emtpy = [ "<" ?id ?attr "/>" ]
+:: ?tag   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
+:: ?block = [ "<" ?id ?attr ">" ?blockContent "</" ?id ">" ]
+
+:: br = [ ?empty ]                 ( ->  br = [ "<" ?id ?attr "/>" ] )
+:: input = [ ?empty ; id=#name ]   ( ->  input = [ "<" ?id ?attr "/>"  ; id=#name ]
+:: label = [ ?tag ]                ( ->  label = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
+:: text  = label[ for=#id ; input[ type=text ?attr ] ; #_label ]
+                                   ( ->  text  = label[ for=#id ; input[ type=text value=?content ?attr ] ; #_label ]
+
+text[ name=blah ; "some value" ]
 
 
-DOCTYPE []
-html[
-	head[]
-	body[
-		p "Hello world"
-
-		p 'testing'
-	]
-]

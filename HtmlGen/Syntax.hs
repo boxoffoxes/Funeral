@@ -11,7 +11,7 @@ data Exp = Tag Id Exp
 		 | Pri Prim
 	deriving Show
 
-data Prim = 
+data Prim = TagId | Attrs | Content
 
 
 data Value = Val String

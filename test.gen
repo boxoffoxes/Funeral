@@ -13,6 +13,17 @@
 	?blockContent: rendered content, separated by newlines (maybe indented too?)
 )
 
+
+:: tag = ["<" #tagId #attrs " />"]
+
+:: input = tag [tagId=?self attrs=[ id=#name ] ]
+:: label = tag [name=label]
+:: text = label [ input attrs=[ type=text ] ]
+
+
+
+
+
 :: _EMTPY = [ "<" ?id ?attr "/>" ]
 :: _TAG   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
 :: _BLOCK = [ "<" ?id ?attr ">" ?blockContent "</" ?id ">" ]

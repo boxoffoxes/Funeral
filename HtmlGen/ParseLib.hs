@@ -65,11 +65,6 @@ exactlyOne p = pure (:) <*> p <*> pure []
 alphanum :: Parser Char
 alphanum = satisfy isAlphaNum
 
-symbolChar :: Parser Char
-symbolChar = satisfy isSymChar
-	where 
-		isSymChar c = isAlphaNum c || c == '_'
-
 space :: Parser Char
 space = satisfy isSpace
 

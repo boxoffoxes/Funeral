@@ -1,80 +1,56 @@
 module HtmlGen.Parser where
 
+import Char
+
 import HtmlGen.ParseLib
 import HtmlGen.Syntax
 
-import List as L
-
-
 token :: Parser a -> Parser a
-token p = p <| optSpaces
---	where
---		ignoreChars = maybeSome $ satisfy isSpace <|> satisfy (== ",") <|> satisfy (== ";")
+token p = p <| ignoredChars
+	where
+		ignoredChars = maybeSome $ satisfy (`elem` " \t\n\r;,")
 
 keyword :: String -> Parser String
 keyword = token . string
-
-{-escapeChar :: Parser String
-escapeChar = string "\\\\" <|> string "\\\"" <|> string "\\'"
-
-quotedRegion :: String -> String -> Parser String
-quotedRegion open close = string open |> maybeSome <| string close
--}
 
 stringLiteral :: Parser String
 stringLiteral =   token ( char '"'  |> maybeSome ( satisfy (/= '"') )  <| char '"' )
               <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
--- commentLiteral :: Parser String
--- commentLiteral =  token ( string "<!--"  |> maybeSome (  <| string "-->"
+symbolChar :: Parser Char
+symbolChar = satisfy isSymChar
+	where 
+		isSymChar c = isAlphaNum c || c == '_'
 
-
-label :: Parser String
-label = token $ atLeastOne symbolChar
-
-reference :: Parser String
-reference = char '#' |> label
+symbol :: Parser String
+symbol = token $ atLeastOne symbolChar
 
 
 expr :: Parser Exp
-expr =	pure Tag <*> label <*> expr
-	<|> pure Def <*> keyword "::" |> label <| keyword "=" <*> expr
-	<|> pure Mac <*> string ":" |> label <*> stringLiteral
+expr =  pure App <*> symbol <*> expr
 	<|> pure Lit <*> stringLiteral
-	<|> pure Att <*> token attribute
-	<|> pure Prim <*> string "?" |> label
-	<|> pure Mul <*> keyword "[" |> maybeSome expr <| keyword "]"
---	<|> pure Com <*> keyword "<!--" |> 
+	<|> pure Lis <*> keyword "[" |> maybeSome expr <| keyword "]"
+	<|> pure Sym <*> keyword "#" |> symbol
+	<|> pure Def <*> symbol <| keyword "=" <*> expr
 
-
-attributes :: Parser [Attr]
-attributes = maybeSome (token attribute) <| maybeOne (keyword ";")
-
-value :: Parser Value
-value = pure Ref <*> reference
-	<|> pure Val <*> ( label <|> stringLiteral )
-
-attribute :: Parser Attr
-attribute = pure (,) <*> label <| keyword "=" <*> value
-
-
--- tag :: Parser Exp
--- tag =   pure Tag label <*> stringLiteral
---	<|> label <*> bracketed content
-
---content :: Parser String
--- content = attribs <*> keyword ";" <*> tagBody
-
---attribs :: Parser String
---attribs = string ""
-
--- tagBody :: Parser String
--- tagBody = string ""
-
-
-parse :: String -> [Exp]
-parse s = if junk /= "" then error ("Parse error at '" ++ take 30 junk ++ "...'\n") else exps
+parse :: String -> Exp
+parse s = case junk of
+	""        -> Lis exps
+	otherwise -> error ("Parse error at '" ++ take 30 junk ++ "...'\n")
 	where
 		(junk, exps) = head $ maybeSome expr s
+
+simplify :: Exp -> Exp
+-- simplify ( App id e ) = simplify Lis [ Def "__id" id , Def "__content" e , ]
+simplify (Lis []) = Lit ""
+simplify (Lis [e]) = e
+simplify (Lis es) = Lis $ map simplify $ mergeLiterals $ map simplify es
+simplify e = e
+
+
+mergeLiterals :: [Exp] -> [Exp]
+mergeLiterals ( (Lit s1):(Lit s2):es ) = mergeLiterals ( (Lit (s1 ++ s2)):es )
+mergeLiterals (e:es) = e:(mergeLiterals es)
+mergeLiterals [] = []
 
 

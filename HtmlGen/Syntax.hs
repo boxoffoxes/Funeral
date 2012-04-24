@@ -1,28 +1,17 @@
 module HtmlGen.Syntax where
 
 
-data Exp = Fun ( Library -> Exp -> (Library, Exp) )
-		 | Sym Id
-		 | Lit String
-		 | Def Id Exp
-		 | Lis [Exp]
+data Exp = App Id Exp  -- fun arg
+		 | Lit String  -- "string"
+		 | Def Id Exp  -- key=value
+		 | Sym Id      -- #key
+		 | Lis [Exp]   -- [ e1 e2 e3 ]
+	deriving Show
 
 
 type Id = String
 type Library = [ Definition ]
 type Definition = ( Id, Exp )
-
-
-funDefine :: Library -> Exp -> (Library, Exp) 
-funDefine l 
-
-coreLibrary = [ ("::", funDefine ) ]
-
-
-libraryLookup :: Library -> String -> Exp
-libraryLookup l s = case lookup s l of 
-	Just  e -> e
-	Nothing -> error $ "Undefined function '" ++ s ++ "'\n"
 
 
 

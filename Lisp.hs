@@ -2,9 +2,9 @@ module Lisp where
 
 import HtmlGen.ParseLib
 
+import IO
 import System( getArgs )
 import Char (isDigit, isAlpha, isAlphaNum, isSpace)
-
 
 data Expr	= Atom String
 			| List [Expr]
@@ -108,6 +108,9 @@ parse s = case junk of
 
 eval :: Expr -> Expr
 eval (List [Atom "quote", e]) = e
+eval (List [Atom "if", pred, conseq, alt]) = case eval pred of
+    Boo False -> eval alt
+    otherwise -> eval conseq
 eval (List (Atom f : es) ) = apply f $ map eval es
 eval e = e
 
@@ -123,7 +126,7 @@ primitives = [  ("+", numericBinop (+) ),
 				("/", numericBinop div ),
 				("mod", numericBinop mod ),
 				("quotient", numericBinop quot),
-				("remainder", numericBinop rem)
+				("remainder", numericBinop rem),
 
 				("=", numBoolBinop (==) ),
 				("<", numBoolBinop (<)  ),
@@ -139,19 +142,26 @@ primitives = [  ("+", numericBinop (+) ),
 				("string<?", strBoolBinop (<)),
 				("string>?", strBoolBinop (>)),
 				("string<=?", strBoolBinop (<=)),
-				("string>=?", strBoolBinop (>=)) ]
+				("string>=?", strBoolBinop (>=)),
+                
+                ("head", car),
+                ("tail", cdr),
+                ("cons", cons),
+                ("eq?", eqv),
+                ("eqv?", eqv) ]
 				--("", ),
 
 numericBinop :: (Integer -> Integer -> Integer) -> [Expr] -> Expr
 numericBinop op params = Num $ foldl1 op $ map unpackNum params
 
 boolBinop :: (Expr -> a) -> (a -> a -> Bool) -> [Expr] -> Expr
-boolBinop unpack op [a1, a2] = op ( unpack a1 ) ( unpack a2 )
+boolBinop unpack op [a1, a2] = Boo $ op ( unpack a1 ) ( unpack a2 )
 boolBinop _ _ _ = error "Binary function called with wrong number of args"
 
 numBoolBinop = boolBinop unpackNum
 strBoolBinop = boolBinop unpackStr
 booBoolBinop = boolBinop unpackBool
+
 
 unpackStr :: Expr -> String
 unpackStr (Str s) = s
@@ -163,15 +173,46 @@ unpackBool :: Expr -> Bool
 unpackBool (Boo b) = b
 unpackBool _ = True
 
-
-
-
 unpackNum (Num n) = n
 unpackNum (Str n) = if null parsed then 0 else fst $ parsed !! 0
 	where
 		parsed = reads n
 unpackNum (List [n]) = unpackNum n
 unpackNum _ = 0
+
+-- lisp head function
+car :: [Expr] -> Expr
+car [ List (x : xs) ] = x
+car [ DottedList (x : xs) _] = x
+car e = error $ "Cannot get the head of value " ++ show e
+
+-- lisp tail function
+cdr :: [Expr] -> Expr
+cdr [ List (x : xs) ] = List xs
+cdr [ DottedList [] e] = e
+cdr [ DottedList (x : xs) e] = DottedList xs e
+cdr e = error $ "Cannot get the tail of value " ++ show e
+
+cons :: [Expr] -> Expr
+cons [e, List []] = List [e]
+cons [e, List es] = List (e:es)
+cons [e, DottedList xs x] = DottedList (e:xs) x
+cons [e, x] = DottedList [e] x
+cons e = error $ "Cannot cons " ++ show e ++ " into a list."
+
+eqv :: [Expr] -> Expr
+eqv [Boo b1, Boo b2] = Boo $ b1 == b2
+eqv [Num n1, Num n2] = Boo $ n1 == n2
+eqv [Str s1, Str s2] = Boo $ s1 == s2
+eqv [Atom a1, Atom a2] = Boo $ a1 == a2
+eqv [DottedList xs x, DottedList ys y] = eqv [List (x:xs), List (y:ys)]
+eqv [List xs, List ys] = Boo $ length xs == length ys && (all eqvPair $ zip xs ys)
+    where
+        eqvPair (a, b) = unpackBool $ eqv [a, b]
+eqv [_, _] = Boo False
+eqv _ = error "Binary comparisons require exactly two arguments"
+
+
 
 
 
@@ -258,6 +299,31 @@ unpackBool (Boo n) = n
 unpackBool _ = True
 
 -}
+
+flushString :: String -> IO ()
+flushString s = putStr s >> hFlush stdout
+
+prompt :: String -> IO String
+prompt s = flushString s >> getLine
+
+evalString :: String -> IO String
+evalString s = return $ show $ eval $ readExpr s
+
+evalAndPrint :: String -> IO ()
+evalAndPrint s = evalString s >>= putStrLn
+
+until_ :: (String -> Bool) -> IO String -> ( String -> IO () ) -> IO ()
+until_ exitCond reader writer = do
+    s <- reader
+    case exitCond s of
+        True -> return ()
+        False -> writer s >> until_ exitCond reader writer
+
+
+repl :: IO ()
+repl = until_ (== "exit") (prompt "Lispish>>> ") evalAndPrint
+
+
 
 main :: IO ()
 main = getArgs >>= print . eval . readExpr . head

@@ -14,7 +14,8 @@ keyword :: String -> Parser String
 keyword = token . string
 
 stringLiteral :: Parser String
-stringLiteral =   token ( char '"'  |> maybeSome ( satisfy (/= '"') )  <| char '"' )
+stringLiteral =   token ( char '`'  |> maybeSome ( satisfy (/= '`')  ) <| char '`' )
+              <|> token ( char '"' 	|> maybeSome ( satisfy (/= '"')  ) <| char '"' )
               <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
 symbolChar :: Parser Char
@@ -39,6 +40,7 @@ parse s = case junk of
 	otherwise -> error ("Parse error at '" ++ take 30 junk ++ "...'\n")
 	where
 		(junk, exps) = head $ maybeSome expr s
+
 
 simplify :: Exp -> Exp
 -- simplify ( App id e ) = simplify Lis [ Def "__id" id , Def "__content" e , ]

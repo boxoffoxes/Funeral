@@ -14,15 +14,18 @@
 )
 
 
-:: tag = ["<" #tagId #attrs " />"]
+#def tag = [`<` $_tag `>` $1 `</` $_tag `>`]
+#def input = ?tag[$0 id=$name]
+#def label = tag [ _tag=$0 ]
+#def text = 'your code is broken'
+#def text = label[ for=$name ; input[ id=$name type='text' ] $_label ]
 
-:: input = tag [tagId=?self attrs=[ id=#name ] ]
-:: label = tag [name=label]
-:: text = label [ input attrs=[ type=text ] ]
+text [ _label='blah' name='ipp_code' ]
 
 
+#def tag = [`<` $_tag `>` $1 `</` $_tag `>`] #def input = tag [ _tag=$0 name=$name ] #def label = tag [] #def text = 'your code is broken' #def text = label[ for=$name ; input[ id=$name type='text' ] $_label ] text [ _label='blah' name='ipp_code' ] 
 
-
+#def tag = [`<` $_tag `>` $1 `</` $_tag `>`] #def input = tag [ type='text' _tag=$0 name=$name ] #def text = 'your code is broken' #def text = label[ for=$name ; input[ id=$name ] $_label ] text [ _label='blah' name='ipp_code' ]
 
 :: _EMTPY = [ "<" ?id ?attr "/>" ]
 :: _TAG   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]

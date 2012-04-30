@@ -14,8 +14,7 @@
 )
 
 
-#def tag = [`<` $_tag `>` $1 `</` $_tag `>`]
-#def input = ?tag[$0 id=$name]
+#def input = [`<` $0 id=$name ` />` ]
 #def label = tag [ _tag=$0 ]
 #def text = 'your code is broken'
 #def text = label[ for=$name ; input[ id=$name type='text' ] $_label ]

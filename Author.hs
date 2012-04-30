@@ -8,7 +8,7 @@ import Char (isDigit, isAlpha, isAlphaNum, isSpace)
 
 data Expr	= Atom String
 			| List [Expr]
-			| DottedList [Expr] Expr
+			| Pair Expr Expr
 			| Num Integer
 			| Str String
 			| Boo Bool
@@ -18,7 +18,7 @@ instance Show Expr where show = showVal
 
 
 symbol :: Parser Char
-symbol = satisfy (`elem` "!#$%&|*+-/:<=>?@^_~") 
+symbol = satisfy (`elem` "!$%&|*+-/:<>?@^_~") 
 
 digit :: Parser Char
 digit = satisfy isDigit
@@ -56,23 +56,13 @@ parseExpr = token $ parseAtom
 				<|> parseString 
 				<|> parseNumber 
 				<|> parseQuoted 
-				<|> keyword "(" |> parseLists <| keyword ")"
-				<|> keyword "[" |> parseLists <| keyword "]"
+				<|> keyword "[" |> parseList <| keyword "]"
 
-parseLists :: Parser Expr
-parseLists = pure DottedList <*> es <*> keyword "." |> parseExpr
-		 <|> pure List <*> es
-	where 
-		es = maybeSome parseExpr
+parsePair :: Parser Expr
+parsePair = pure Pair <*> ( parseString <|> parseAtom ) <| keyword "=" <*> parseExpr
 
--- parseList :: Parser Expr
--- parseList = pure List <*> maybeSome parseExpr
-
--- parseDottedList :: Parser Expr
--- parseDottedList = pure DottedList <*> head <*> tail
-	-- where
-		-- head = parseExpr <| keyword "."
-		-- tail = parseExpr
+parseList :: Parser Expr
+parseList = pure List <*> maybeSome parseExpr
 
 parseQuoted :: Parser Expr
 parseQuoted = pure List <*> es
@@ -86,8 +76,9 @@ showVal (Str s) = show s
 showVal (Num n) = show n
 showVal (Boo True) = "#t"
 showVal (Boo False) = "#f"
-showVal (List es) = "(" ++ unwordsList es ++ ")"
-showVal (DottedList h t) = "(" ++ unwordsList h ++ " . " ++ showVal t ++ ")"
+showVal (List es) = "[" ++ unwordsList es ++ "]"
+showVal (Pair k v) = show k ++ "=" ++ show v
+-- showVal (DottedList h t) = "(" ++ unwordsList h ++ " . " ++ showVal t ++ ")"
 
 
 unwordsList :: [Expr] -> String
@@ -107,10 +98,14 @@ parse s = case junk of
 
 
 eval :: Expr -> Expr
+eval [List es] = List $ map eval $
+eval [Atom a, e] = f e
+    lookup primitives a
+
 eval (List [Atom "quote", e]) = e
-eval (List [Atom "if", pred, conseq, alt]) = case eval pred of
-    Boo False -> eval alt
-    otherwise -> eval conseq
+-- eval (List [Atom "if", pred, conseq, alt]) = case eval pred of
+    --Boo False -> eval alt
+    --otherwise -> eval conseq
 eval (List (Atom f : es) ) = apply f $ map eval es
 eval e = e
 
@@ -183,21 +178,21 @@ unpackNum _ = 0
 -- lisp head function
 car :: [Expr] -> Expr
 car [ List (x : xs) ] = x
-car [ DottedList (x : xs) _] = x
+-- car [ DottedList (x : xs) _] = x
 car e = error $ "Cannot get the head of value " ++ show e
 
 -- lisp tail function
 cdr :: [Expr] -> Expr
 cdr [ List (x : xs) ] = List xs
-cdr [ DottedList [] e] = e
-cdr [ DottedList (x : xs) e] = DottedList xs e
+-- cdr [ DottedList [] e] = e
+-- cdr [ DottedList (x : xs) e] = DottedList xs e
 cdr e = error $ "Cannot get the tail of value " ++ show e
 
 cons :: [Expr] -> Expr
 cons [e, List []] = List [e]
 cons [e, List es] = List (e:es)
-cons [e, DottedList xs x] = DottedList (e:xs) x
-cons [e, x] = DottedList [e] x
+-- cons [e, DottedList xs x] = DottedList (e:xs) x
+-- cons [e, x] = DottedList [e] x
 cons e = error $ "Cannot cons " ++ show e ++ " into a list."
 
 eqv :: [Expr] -> Expr
@@ -205,7 +200,7 @@ eqv [Boo b1, Boo b2] = Boo $ b1 == b2
 eqv [Num n1, Num n2] = Boo $ n1 == n2
 eqv [Str s1, Str s2] = Boo $ s1 == s2
 eqv [Atom a1, Atom a2] = Boo $ a1 == a2
-eqv [DottedList xs x, DottedList ys y] = eqv [List (x:xs), List (y:ys)]
+-- eqv [DottedList xs x, DottedList ys y] = eqv [List (x:xs), List (y:ys)]
 eqv [List xs, List ys] = Boo $ length xs == length ys && (all eqvPair $ zip xs ys)
     where
         eqvPair (a, b) = unpackBool $ eqv [a, b]

@@ -2,11 +2,13 @@ module Main where
 
 import System( getArgs )
 import Char
-import List (nubBy)
+import IO (readFile)
+import List (nubBy, partition, intersperse)
 
 import HtmlGen.ParseLib
 
-data Exp = Tag Id Exp  -- fun arg
+data Exp = Tag Id [Definition] Exp
+         | App Id Exp  -- fun arg
          | Def Id Exp  -- :: name = [ ... ]
          | Num Integer -- 1
          | Str String  -- "string" or 'string' or `string`
@@ -21,7 +23,7 @@ type Definition = ( Id, Exp )
 
 
 symbol :: Parser Char
-symbol = satisfy (`elem` "!%&|*+-/:<>?@^_~") 
+symbol = satisfy (`elem` "!%&|*+-/:<>?@^_~.#") 
 
 digit :: Parser Char
 digit = satisfy isDigit
@@ -108,14 +110,28 @@ stripDefs (Lis es) = Lis es'
 		notDef _  = True
 stripDefs e = e
 
+partitionAttrs :: Exp -> ([Definition], Exp)
+partitionAttrs (Lis es) = (map unpackAttr as, Lis content)
+    where
+        (as, content) = partition isAttr es
+        isAttr (Att _ _) = True
+        isAttr _ = False
+partitionAttrs a@(Att _ _) = ([unpackAttr a], Lis [])
+partitionAttrs e = ([], e)
 
-
+unpackAttr :: Exp -> Definition
+unpackAttr (Att k v) = (k, v)
 
 eval :: Library -> Library -> Exp -> Exp
-eval l sc e@(App f arg) = eval l sc' e'
+eval l sc (App id arg) = case lookup id l of 
+    Just e -> eval l sc' e
+    Nothing -> Tag id as content
     where
-        sc' = tidyLibrary $ createScope sc $ App f $ eval l sc arg
-        e' =  libraryLookup l f
+        (as, content) = partitionAttrs $ eval l sc arg
+        sc' = tidyLibrary $ createScope sc $ App id $ eval l sc arg
+{- eval l sc e@(App f arg) = eval l sc' e'
+    where
+        e' =  libraryLookup l f  -}
 eval l sc (Lis []) = Str ""
 eval l sc (Lis [e]) = eval l sc e
 eval l sc (Lis es) = Lis $ map (eval l sc) $ mergeLiterals $ map (eval l sc) es
@@ -138,11 +154,7 @@ createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++
 createScope sc _ = []
 
 getAttrs :: [Exp] -> Library
-getAttrs es = map unpackAtt $ filter (isAtt) es
-    where
-        isAtt (Att _ _) = True
-        isAtt _ = False
-        unpackAtt (Att k v) = (k, v)
+getAttrs es = fst $ partitionAttrs $ Lis es
 
 tidyLibrary :: Library -> Library
 tidyLibrary = nubBy (\a b -> fst a == fst b)
@@ -155,11 +167,32 @@ mergeLiterals (e:es) = e:(mergeLiterals es)
 mergeLiterals [] = []
 
 
+render :: Exp -> String
+render (Str s) = s
+render (Num n) = show n
+render (Tag id as content) = openTag ++ body ++ closeTag
+    where
+        body = render content
+        (openTag, closeTag) = case body of
+            ""        -> ( '<' : id ++ renderAttrs as ++ " />", "")
+            otherwise -> ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
+render (Lis es) = concat $ intersperse " " $ map render es
+render e = error $ "Cannot render " ++ show e
+
+renderAttrs :: [Definition] -> String
+renderAttrs as = case null as of
+    True -> ""
+    otherwise -> ' ' : ( concat $ intersperse " " $ map renderAttr as )
+    where
+        renderAttr (k, v) = k ++ "=\"" ++ render v ++ "\""
+
+
 main :: IO ()
 main = do
     args <- getArgs
-    let tree = parse $ head args
+    sources <- mapM readFile args
+    let tree = parse $ concat sources
     let lib = buildLibrary tree
     let tree' = stripDefs tree
-    print $ eval lib [] tree'
+    putStrLn $ render $ eval lib [] tree'
 

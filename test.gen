@@ -1,41 +1,13 @@
-:import "xhtml10.gen"
-
-(Opts:
-	?empty: defines a tag that may be empty, eg <br />
-	?inline: a regular HTML tag <p attr="val">content1 content2 content3</p>
-	?block: 
-
-	And for the special cases...
-
-	?id: the name of the tag being defined.
-	?attr: non-underscore-prefixed attributes, rendered as a string.
-	?content: rendered content, separated by spaces.
-	?blockContent: rendered content, separated by newlines (maybe indented too?)
-)
+#def :ipr = [ "<<" $name ".IPR.SRS>>" ]
+#def :text = 'your code is broken'
+#def :text = label[ for=$name class="labelForInput" ; input[ name=$name id=$name value= ] $_label ]
 
 
-#def input = [`<` $0 id=$name ` />` ]
-#def label = tag [ _tag=$0 ]
-#def text = 'your code is broken'
-#def text = label[ for=$name ; input[ id=$name type='text' ] $_label ]
-
-text [ _label='blah' name='ipp_code' ]
-
-
-#def tag = [`<` $_tag `>` $1 `</` $_tag `>`] #def input = tag [ _tag=$0 name=$name ] #def label = tag [] #def text = 'your code is broken' #def text = label[ for=$name ; input[ id=$name type='text' ] $_label ] text [ _label='blah' name='ipp_code' ] 
-
-#def tag = [`<` $_tag `>` $1 `</` $_tag `>`] #def input = tag [ type='text' _tag=$0 name=$name ] #def text = 'your code is broken' #def text = label[ for=$name ; input[ id=$name ] $_label ] text [ _label='blah' name='ipp_code' ]
-
-:: _EMTPY = [ "<" ?id ?attr "/>" ]
-:: _TAG   = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
-:: _BLOCK = [ "<" ?id ?attr ">" ?blockContent "</" ?id ">" ]
-
-:: br = _EMTPY [  ]                 ( ->  br = [ "<" ?id ?attr "/>" ] )
-:: input = _EMPTY [ id=#name ]   ( ->  input = [ "<" ?id ?attr "/>"  ; id=#name ]
-:: label = _TAG [  ]                ( ->  label = [ "<" ?id ?attr ">" ?content "</" ?id ">" ]
-:: text  = label[ for=#id ; input[ type=text ?attr ] ; #_label ]
-                                   ( ->  text  = label[ for=#id ; input[ type=text value=?content ?attr ] ; #_label ]
-
-text[ name=blah ; "some value" ]
-
-
+html [
+    head title "This is my first document"
+    body div [class="content" ;
+        form [ method="post" action="./" ;
+            :text[ name="IPP_CODE" _label="My input" ]
+        ]
+    ]
+]

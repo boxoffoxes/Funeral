@@ -9,7 +9,6 @@ import HtmlGen.ParseLib
 
 data Exp = Tag Id [Definition] Exp
          | App Id Exp  -- fun arg
-         | Def Id Exp  -- :: name = [ ... ]
          | Num Integer -- 1
          | Str String  -- "string" or 'string' or `string`
          | Att Id Exp  -- key=value
@@ -74,17 +73,17 @@ parseAtt = pure Att <*> parseId <| keyword "=" <*> parseExpr
 parseRef :: Parser Exp
 parseRef = pure Ref <*> string "$" |> ( parseId <|> keyword "0" <|> keyword "1" )
 
-parseDef :: Parser Exp
-parseDef = pure Def <*> keyword "#def" |> parseId <| keyword "=" <*> parseExpr
+-- parseDef :: Parser Exp
+-- parseDef = pure Def <*> keyword "#def" |> parseId <| keyword "=" <*> parseExpr
 
 parseExpr :: Parser Exp
-parseExpr = parseDef <|> parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
+parseExpr = {-parseDef <|>-} parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
 
 
 parse :: String -> Exp
 parse s = case junk of
     ""        -> Lis exps
-    otherwise -> error ("Parse error at '" ++ take 30 junk ++ "...'\n")
+    otherwise -> error ("Parse error in '" ++ take 30 junk ++ "...'\n")
     where
         (junk, exps) = head $ maybeSome parseExpr s
 
@@ -97,16 +96,24 @@ buildLibrary e = getDefs coreLibrary e
 getDefs :: Library -> Exp -> Library
 getDefs l e = getDef e ++ l
 
+createScope :: Library -> Exp -> Library
+createScope sc (App id (Lis es)) = ("0", Str id):("1", Lis es):getAttrs es ++ sc
+createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++ sc
+createScope sc _ = []
+
+getAttrs :: [Exp] -> Library
+getAttrs es = fst $ partitionAttrs $ Lis es
+
 getDef :: Exp -> Library
 getDef (Lis es) = reverse $ concatMap getDef es
-getDef (Def id e) = [ (id, e) ]
+getDef (Att id e) = [ (id, e) ]
 getDef _ = []
 
 stripDefs :: Exp -> Exp
 stripDefs (Lis es) = Lis es'
 	where
 		es' = map stripDefs $ filter notDef es
-		notDef (Def _ _) = False
+		notDef (Att _ _) = False
 		notDef _  = True
 stripDefs e = e
 
@@ -122,39 +129,28 @@ partitionAttrs e = ([], e)
 unpackAttr :: Exp -> Definition
 unpackAttr (Att k v) = (k, v)
 
-eval :: Library -> Library -> Exp -> Exp
-eval l sc (App id arg) = case lookup id l of 
-    Just e -> eval l sc' e
+eval :: Library -> Exp -> Exp
+eval l (App id arg) = case lookup id l of 
+    Just e -> eval l' e
     Nothing -> Tag id as content
     where
-        (as, content) = partitionAttrs $ eval l sc arg
-        sc' = tidyLibrary $ createScope sc $ App id $ eval l sc arg
-{- eval l sc e@(App f arg) = eval l sc' e'
+        (as, content) = partitionAttrs $ eval l' arg
+        l' = getDefs l $ eval l arg
+eval l (Lis []) = Str ""
+eval l (Lis [e]) = eval l e
+eval l (Lis es) = Lis $ map (eval l) $ mergeLiterals $ map (eval l) es
+eval l (Att id e) = Att id $ eval l e
+eval l (Ref r) = val
     where
-        e' =  libraryLookup l f  -}
-eval l sc (Lis []) = Str ""
-eval l sc (Lis [e]) = eval l sc e
-eval l sc (Lis es) = Lis $ map (eval l sc) $ mergeLiterals $ map (eval l sc) es
-eval l sc (Att id e) = Att id $ eval l sc e
-eval l sc (Ref r) = val
-    where
-        val = case lookup r sc of
-            Just v  -> v
-            Nothing -> error $ "undefined reference to " ++ r
-eval l sc e = e
+        val = case lookup r l of
+            Just v  -> eval l v
+            Nothing -> error $ "undefined reference: " ++ r ++ " not in library " ++ show l
+eval l e = e
 
 libraryLookup :: Library -> String -> Exp
 libraryLookup l id = case lookup id l of 
 	Just  e -> e
 	Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
-
-createScope :: Library -> Exp -> Library
-createScope sc (App id (Lis es)) = ("0", Str id):("1", Lis es):getAttrs es ++ sc
-createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++ sc
-createScope sc _ = []
-
-getAttrs :: [Exp] -> Library
-getAttrs es = fst $ partitionAttrs $ Lis es
 
 tidyLibrary :: Library -> Library
 tidyLibrary = nubBy (\a b -> fst a == fst b)
@@ -194,5 +190,5 @@ main = do
     let tree = parse $ concat sources
     let lib = buildLibrary tree
     let tree' = stripDefs tree
-    putStrLn $ render $ eval lib [] tree'
+    putStrLn $ render $ eval lib tree'
 

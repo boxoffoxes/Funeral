@@ -1,13 +1,13 @@
-#def :ipr = [ "<<" $name ".IPR.SRS>>" ]
-#def :text = 'your code is broken'
-#def :text = label[ for=$name class="labelForInput" ; input[ name=$name id=$name value= ] $_label ]
+_ipr = [ "<<" $name ".IPR.SRS>>" ]
+:text = 'your code is broken'
+:text = label[ for=$name class="labelForInput" ; input[ name=$name id=$name value=$value ] $_label ]
 
 
 html [
     head title "This is my first document"
     body div [class="content" ;
         form [ method="post" action="./" ;
-            :text[ name="IPP_CODE" _label="My input" ]
+            :text[ name="IPP_CODE" _label="My input" value=$_ipr ]
         ]
     ]
 ]

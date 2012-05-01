@@ -1,13 +1,46 @@
+!DOCTYPE = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
+
 _ipr = [ "<<" $name ".IPR.SRS>>" ]
-:text = 'your code is broken'
+_root = "https://www.york.ac.uk"
+:text = 'your program is broken'
 :text = label[ for=$name class="labelForInput" ; input[ name=$name id=$name value=$value ] $_label ]
 
+_content = [
+	div form [ method="POST" ;
+		:text [ name="IPR_ABCD" _label="ipr field 1" value=$_ipr]
+		:text [name="IPR_CHEESE" _label="ipr field 2" value=$_ipr]
+		input []
+		select [ option [] ]	
+	]
+]
 
-html [
-    head title "This is my first document"
-    body div [class="content" ;
-        form [ method="post" action="./" ;
-            :text[ name="IPP_CODE" _label="My input" value=$_ipr ]
-        ]
-    ]
+
+!DOCTYPE[]
+html[
+head[
+	title "Postgraduate Application Form - Demo version"
+	link[ rel="stylesheet" type="text/css" href=[$_root "/media/global/styles/standard_styles.css" ] ]
+	link[ rel="stylesheet" type="text/css" href=[$_root "/media/css/study/customise.css" ] ]
+	link[ rel="stylesheet" type="text/css" href=[$_root "/you-at-york/yayspecific.css" ] ]
+	link[ rel="stylesheet" type="text/css" href="application_form.css" ]
+	script[ type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js" ]
+	script[ type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.3/jquery-ui.min.js"  ]
+]
+body[ class="noI" ;
+div[ id="container" ;
+	div[ id="header" ;
+		div[ id="location" ;
+			a[ href="http://www.york.ac.uk/" ; img[ src="https://york.ac.uk/media/css/study/logo.gif" alt="" title="" width="202" height="35" ] ]
+
+			h1 "You@York - Application for Postgraduate Study"
+		]
+		div[ class="clear" ; "&nbsp;" ]
+		div[ id="extra-links" ;
+			div[ id="halonav" ; p "&nbsp;" ]
+		]
+	]
+	$_content
+]
+]
 ]

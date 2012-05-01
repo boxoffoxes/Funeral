@@ -30,11 +30,14 @@ digit = satisfy isDigit
 letter :: Parser Char
 letter = satisfy isAlpha
 
+padding :: Parser Char
+padding = satisfy (`elem` "\n\r \t")
+
 
 token :: Parser a -> Parser a
 token p = p <| ignoredChars
     where
-        ignoredChars = maybeSome $ satisfy (`elem` " \t\n\r;,")
+        ignoredChars = maybeSome $ satisfy (`elem` " \t;,")
 
 keyword :: String -> Parser String
 keyword = token . string
@@ -43,11 +46,8 @@ keyword = token . string
 parseId :: Parser String
 parseId = token $ pure (:) <*> (symbol <|> letter) <*> maybeSome (symbol <|> digit <|> letter)
 
--- parseLongId :: Parser (String, [Exp])
--- parseLongId = pure (,) <*> id <*> es
-    -- where
-        -- id = parseId
-        -- es = maybeSome ( pure Att <*> "id" <*> char '#' |> parseId <|> pure Att )
+parsePad :: Parser Exp
+parsePad = token $ pure Str <*> atLeastOne padding
 
 parseStr :: Parser Exp
 parseStr = pure Str <*> s
@@ -62,22 +62,24 @@ parseNum = pure Num <*> n
         n = token $ pure (read) <*> atLeastOne digit
 
 parseApp :: Parser Exp
-parseApp = pure App <*> parseId <*> parseExpr
+parseApp = pure App <*> parseId <| maybeSome parsePad <*> parseExpr
 
 parseList :: Parser Exp
 parseList = pure Lis <*> keyword "[" |> maybeSome parseExpr <| keyword "]"
 
 parseAtt :: Parser Exp
-parseAtt = pure Att <*> parseId <| keyword "=" <*> parseExpr
+parseAtt = pure Att <*> parseId <| keyword "=" <*> parseExpr -- <| maybeSome parsePad
 
 parseRef :: Parser Exp
 parseRef = pure Ref <*> string "$" |> ( parseId <|> keyword "0" <|> keyword "1" )
 
--- parseDef :: Parser Exp
--- parseDef = pure Def <*> keyword "#def" |> parseId <| keyword "=" <*> parseExpr
+-- parseComment :: Parser Exp
+-- parseComment = pure Str <*> keyword "<!--" |> text <| keyword "-->" )
+	-- where
+		-- text = maybeSome satisfy (
 
 parseExpr :: Parser Exp
-parseExpr = {-parseDef <|>-} parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
+parseExpr = parsePad <|> parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
 
 
 parse :: String -> Exp
@@ -88,6 +90,8 @@ parse s = case junk of
         (junk, exps) = head $ maybeSome parseExpr s
 
 
+-- if each top-level declaration stores its own scope, 
+-- new declarations can maybe extend older ones, forth-style;
 coreLibrary = []
 
 buildLibrary :: Exp -> Library
@@ -95,14 +99,6 @@ buildLibrary e = getDefs coreLibrary e
 
 getDefs :: Library -> Exp -> Library
 getDefs l e = getDef e ++ l
-
--- createScope :: Library -> Exp -> Library
--- createScope sc (App id (Lis es)) = ("0", Str id):("1", Lis es):getAttrs es ++ sc
--- createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++ sc
--- createScope sc _ = []
-
--- getAttrs :: [Exp] -> Library
--- getAttrs es = fst $ partitionAttrs $ Lis es
 
 getDef :: Exp -> Library
 getDef (Lis es) = reverse $ concatMap getDef es
@@ -144,17 +140,13 @@ eval l (Ref r) = val
     where
         val = case lookup r l of
             Just v  -> eval l v
-            Nothing -> Ref r -- error $ "undefined reference: " ++ r ++ " not in library " ++ show l
+            Nothing -> Ref r
 eval l e = e
 
-libraryLookup :: Library -> String -> Exp
-libraryLookup l id = case lookup id l of 
-	Just  e -> e
-	Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
-
--- tidyLibrary :: Library -> Library
--- tidyLibrary = nubBy (\a b -> fst a == fst b)
-
+-- libraryLookup :: Library -> String -> Exp
+-- libraryLookup l id = case lookup id l of 
+	-- Just  e -> e
+	-- Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
 
 
 mergeLiterals :: [Exp] -> [Exp]
@@ -166,14 +158,20 @@ mergeLiterals [] = []
 render :: Exp -> String
 render (Str s) = s
 render (Num n) = show n
-render (Tag id as content) = openTag ++ body ++ closeTag
+-- render (Tag ('<':id) as content) = renderTag id as content
+render (Tag id as content) = renderTag id as content
+render (Lis es) = concat $ {- intersperse " " $ -} map render es
+render (Ref r) = error $ "Found an undefined reference to " ++ show r
+render e = error $ "Cannot render " ++ show e
+
+renderTag :: Id -> [Definition] -> Exp -> String
+renderTag id as content = openTag ++ body ++ closeTag
     where
         body = render content
-        (openTag, closeTag) = case body of
-            ""        -> ( '<' : id ++ renderAttrs as ++ " />", "")
-            otherwise -> ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
-render (Lis es) = concat $ intersperse " " $ map render es
-render e = error $ "Cannot render " ++ show e
+        (openTag, closeTag) = ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
+--        (openTag, closeTag) = case body of
+--            ""        -> ( '<' : id ++ renderAttrs as ++ " />", "")
+--            otherwise -> ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
 
 renderAttrs :: [Definition] -> String
 renderAttrs as = case null as of

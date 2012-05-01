@@ -43,11 +43,11 @@ keyword = token . string
 parseId :: Parser String
 parseId = token $ pure (:) <*> (symbol <|> letter) <*> maybeSome (symbol <|> digit <|> letter)
 
-{- parseLongId :: Parser (String, [Exp])
-parseLongId = pure (,) <*> id <*> es
-    where
-        id = parseId
-        es = maybeSome ( pure Att <*> "id" <*> char '#' |> parseId <|> pure Att ) -}
+-- parseLongId :: Parser (String, [Exp])
+-- parseLongId = pure (,) <*> id <*> es
+    -- where
+        -- id = parseId
+        -- es = maybeSome ( pure Att <*> "id" <*> char '#' |> parseId <|> pure Att )
 
 parseStr :: Parser Exp
 parseStr = pure Str <*> s
@@ -96,13 +96,13 @@ buildLibrary e = getDefs coreLibrary e
 getDefs :: Library -> Exp -> Library
 getDefs l e = getDef e ++ l
 
-createScope :: Library -> Exp -> Library
-createScope sc (App id (Lis es)) = ("0", Str id):("1", Lis es):getAttrs es ++ sc
-createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++ sc
-createScope sc _ = []
+-- createScope :: Library -> Exp -> Library
+-- createScope sc (App id (Lis es)) = ("0", Str id):("1", Lis es):getAttrs es ++ sc
+-- createScope sc (App id a@(Att k v)) = ("0", Str id):("1", Lis [a] ):(k, v):[] ++ sc
+-- createScope sc _ = []
 
-getAttrs :: [Exp] -> Library
-getAttrs es = fst $ partitionAttrs $ Lis es
+-- getAttrs :: [Exp] -> Library
+-- getAttrs es = fst $ partitionAttrs $ Lis es
 
 getDef :: Exp -> Library
 getDef (Lis es) = reverse $ concatMap getDef es
@@ -144,7 +144,7 @@ eval l (Ref r) = val
     where
         val = case lookup r l of
             Just v  -> eval l v
-            Nothing -> error $ "undefined reference: " ++ r ++ " not in library " ++ show l
+            Nothing -> Ref r -- error $ "undefined reference: " ++ r ++ " not in library " ++ show l
 eval l e = e
 
 libraryLookup :: Library -> String -> Exp
@@ -152,8 +152,8 @@ libraryLookup l id = case lookup id l of
 	Just  e -> e
 	Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
 
-tidyLibrary :: Library -> Library
-tidyLibrary = nubBy (\a b -> fst a == fst b)
+-- tidyLibrary :: Library -> Library
+-- tidyLibrary = nubBy (\a b -> fst a == fst b)
 
 
 

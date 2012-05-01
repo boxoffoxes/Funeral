@@ -9,7 +9,7 @@ _root = "https://www.york.ac.uk"
 _content = [
 	div form [ method="POST" ;
 		:text [ name="IPR_ABCD" _label="ipr field 1" value=$_ipr]
-		:text [name="IPR_CHEESE" _label="ipr field 2" value=$_ipr]
+		:text [ name="IPR_CHEESE" _label="ipr field 2" value=$_ipr]
 		input []
 		select [ option [] ]	
 	]
@@ -27,20 +27,19 @@ head[
 	script[ type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js" ]
 	script[ type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.3/jquery-ui.min.js"  ]
 ]
-body[ class="noI" ;
-div[ id="container" ;
-	div[ id="header" ;
-		div[ id="location" ;
+body.noI [
+div#container [
+	div#header [
+		div#location [
 			a[ href="http://www.york.ac.uk/" ; img[ src="https://york.ac.uk/media/css/study/logo.gif" alt="" title="" width="202" height="35" ] ]
 
 			h1 "You@York - Application for Postgraduate Study"
 		]
-		div[ class="clear" ; "&nbsp;" ]
-		div[ id="extra-links" ;
-			div[ id="halonav" ; p "&nbsp;" ]
+		div.clear "&nbsp;"
+		div#extra-links [
+			div#halonav p "&nbsp;"
 		]
 	]
-	$_content
 ]
 ]
 ]

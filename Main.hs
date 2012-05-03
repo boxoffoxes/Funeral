@@ -7,14 +7,24 @@ import List (nubBy, partition, intersperse)
 
 import HtmlGen.ParseLib
 
-data Exp = Tag Id [Definition] Exp
-         | App Id Exp  -- fun arg
+data Exp = App Id Exp  -- fun arg
          | Num Integer -- 1
          | Str String  -- "string" or 'string' or `string`
          | Att Id Exp  -- key=value
          | Ref Id      -- $key
          | Lis [Exp]   -- [ e1 e2 e3 ]
-    deriving Show
+		 | Fun (Exp -> Exp)
+--    deriving Show
+
+instance Show Exp where 
+	show (App id exp) = "App " ++ show id ++ " " ++ show exp
+	show (Num n) = "Num " ++ show n
+	show (Str s) = "Str " ++ show s
+	show (Att id e) = "Att " ++ show id ++ " " ++ show e
+	show (Lis es) = "Lis " ++ show es
+	show (Ref r) = "Ref " ++ show r
+	show (Fun f) = "<function>"
+	
 
 type Id = String
 type Library = [ Definition ]
@@ -92,7 +102,8 @@ parse s = case junk of
 
 -- if each top-level declaration stores its own scope, 
 -- new declarations can maybe extend older ones, forth-style;
-coreLibrary = []
+coreLibrary = [ 
+				("!tag", Fun fnTag), ("!emptyTag", Fun fnEmptyTag) ]
 
 buildLibrary :: Exp -> Library
 buildLibrary e = getDefs coreLibrary e
@@ -127,11 +138,8 @@ unpackAttr (Att k v) = (k, v)
 
 eval :: Library -> Exp -> Exp
 eval l (App id arg) = case lookup id l of 
-    Just e -> eval l' e
-    Nothing -> Tag id as content
-    where
-        (as, content) = partitionAttrs $ eval l' arg
-        l' = getDefs l $ eval l arg
+    Just (Fun f) -> f arg -- needs eval?
+    Nothing -> error $ "Undefined function '" ++ id ++ "'" -- Tag id as content
 eval l (Lis []) = Str ""
 eval l (Lis [e]) = eval l e
 eval l (Lis es) = Lis $ map (eval l) $ mergeLiterals $ map (eval l) es
@@ -148,6 +156,28 @@ eval l e = e
 	-- Just  e -> e
 	-- Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
 
+fnTag :: Exp -> Exp
+fnTag (Str s) = Fun $ makeTag False s
+
+fnEmptyTag :: Exp -> Exp
+fnEmptyTag (Str s) = Fun $ makeTag True s
+
+makeTag :: Bool -> String -> Exp -> Exp
+makeTag empty id arg = Str $ ('<':id) ++ attrStr ++ ">" ++ content ++ closure
+	where
+		(as, c) = partitionAttrs arg
+		attrStr = case as of
+			[] -> ""
+			_  -> renderAttrs as
+		content = render c
+		closure = case (content, empty) of
+			("", True)  -> " />"
+			("", False) -> "></" ++ id ++ ">"
+			(e,  _)     -> content ++ "</" ++ id ++ ">"
+
+
+	
+
 
 mergeLiterals :: [Exp] -> [Exp]
 mergeLiterals ( (Str s1):(Str s2):es ) = mergeLiterals ( (Str (s1 ++ s2)):es )
@@ -159,7 +189,7 @@ render :: Exp -> String
 render (Str s) = s
 render (Num n) = show n
 -- render (Tag ('<':id) as content) = renderTag id as content
-render (Tag id as content) = renderTag id as content
+-- render (Tag id as content) = renderTag id as content
 render (Lis es) = concat $ {- intersperse " " $ -} map render es
 render (Ref r) = error $ "Found an undefined reference to " ++ show r
 render e = error $ "Cannot render " ++ show e
@@ -184,8 +214,8 @@ renderAttrs as = case null as of
 main :: IO ()
 main = do
     args <- getArgs
-    sources <- mapM readFile args
-    let tree = parse $ concat sources
+    -- sources <- mapM readFile args
+    let tree = parse $ concat args --sources
     let lib = buildLibrary tree
     let tree' = stripDefs tree
     putStrLn $ render $ eval lib tree'

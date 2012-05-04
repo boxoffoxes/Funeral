@@ -1,11 +1,13 @@
 module Main where
 
+import Author.ParseLib
+
+
 import System( getArgs )
 import Char
 import IO (readFile)
 import List (nubBy, partition, intersperse)
 
-import HtmlGen.ParseLib
 
 data Exp = App Id Exp  -- fun arg
          | Num Integer -- 1

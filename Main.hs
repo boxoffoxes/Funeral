@@ -16,8 +16,6 @@ data Exp = App Id Exp  -- fun arg
 		 | Fun (Exp -> Exp)
 --    deriving Show
 
-data EvalResult = EvalResult { exp::Exp, lib::Library } deriving Show
-
 instance Show Exp where 
 	show (App id exp) = "App " ++ show id ++ " " ++ show exp
 	show (Num n) = "Num " ++ show n
@@ -140,20 +138,29 @@ unpackAttr :: Exp -> Definition
 unpackAttr (Att k v) = (k, v)
 
 eval :: (Library, Exp) -> (Library, Exp)
-eval (l, Lis [])   = ( l,  Str "")
-eval (l, Lis [e])  = eval (l, e)
-eval (l, Lis (e:es)) = 
-	(l', e') = eval (l, e)
-eval (l, Att id e) = ( l', Att id (Ref id) ) -- not sure about this. infinite loopy goodness?
+eval (l, App id arg) = case lookup id l of
+    Just (Fun f) -> (l, f arg)
+    Just x       -> error $ "Can't apply a non-function value: " ++ show x
+    Nothing      -> error $ "Undefined function '" ++ id ++ "'"
+eval (l, Lis [])    = ( l,  Str "")
+eval (l, Lis [e])   = eval (l, e)
+eval (l, Lis es)    = (l, Lis $ evalList l es)
+eval (l, Att id e)  = ( l', Att id e' ) -- not sure about this. infinite loopy goodness?
 	where
 		l' = (id, e') : l
 		e' = snd $ eval (l, e)
-eval (l, Ref r)    = case lookup r l of
+eval (l, Ref r)     = case lookup r l of
 	Just v    -> eval (l, v)
 	Nothing   -> (l, Ref r)
-eval (l, e)        = ( l, e)
+eval (l, e)         = (l, e)
 
+evalList :: Library -> [Exp] -> [Exp]
+evalList l [] = []
+evalList l (e:es) = e': evalList l' es 
+    where
+        (l', e') = eval (l, e)
 
+{-
 eval ( l, (App id arg) ) = case lookup id l of 
     Just (Fun f) -> (f arg) l -- needs eval?
     Nothing -> error $ "Undefined function '" ++ id ++ "'" -- Tag id as content
@@ -167,7 +174,7 @@ eval l (Ref r) = val
             Just v  -> eval l v
             Nothing -> Ref r
 eval l e = e
-
+-}
 -- libraryLookup :: Library -> String -> Exp
 -- libraryLookup l id = case lookup id l of 
 	-- Just  e -> e
@@ -180,7 +187,7 @@ fnEmptyTag :: Exp -> Exp
 fnEmptyTag (Str s) = Fun $ makeTag True s
 
 makeTag :: Bool -> String -> Exp -> Exp
-makeTag empty id arg = Str $ ('<':id) ++ attrStr ++ ">" ++ content ++ closure
+makeTag empty id arg = Str $ ('<':id) ++ attrStr ++ closure
 	where
 		(as, c) = partitionAttrs arg
 		attrStr = case as of
@@ -190,7 +197,7 @@ makeTag empty id arg = Str $ ('<':id) ++ attrStr ++ ">" ++ content ++ closure
 		closure = case (content, empty) of
 			("", True)  -> " />"
 			("", False) -> "></" ++ id ++ ">"
-			(e,  _)     -> content ++ "</" ++ id ++ ">"
+			(e,  _)     -> ">" ++ content ++ "</" ++ id ++ ">"
 
 
 	
@@ -208,14 +215,15 @@ render (Num n) = show n
 -- render (Tag ('<':id) as content) = renderTag id as content
 -- render (Tag id as content) = renderTag id as content
 render (Lis es) = concat $ {- intersperse " " $ -} map render es
+render (Att _ _) = ""
 render (Ref r) = error $ "Found an undefined reference to " ++ show r
 render e = error $ "Cannot render " ++ show e
 
-renderTag :: Id -> [Definition] -> Exp -> String
-renderTag id as content = openTag ++ body ++ closeTag
-    where
-        body = render content
-        (openTag, closeTag) = ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
+-- renderTag :: Id -> [Definition] -> Exp -> String
+-- renderTag id as content = openTag ++ body ++ closeTag
+    -- where
+        -- body = render content
+        -- (openTag, closeTag) = ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
 --        (openTag, closeTag) = case body of
 --            ""        -> ( '<' : id ++ renderAttrs as ++ " />", "")
 --            otherwise -> ( '<' : id ++ renderAttrs as ++ ">",   "</" ++ id ++ ">")
@@ -233,7 +241,7 @@ main = do
     args <- getArgs
     -- sources <- mapM readFile args
     let tree = parse $ concat args --sources
-    let lib = buildLibrary tree
-    let tree' = stripDefs tree
-    putStrLn $ render $ eval lib tree'
+    -- let lib = buildLibrary tree
+    -- let tree' = stripDefs tree
+    putStrLn $ render $ snd $ eval (coreLibrary, tree)
 

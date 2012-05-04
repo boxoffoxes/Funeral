@@ -1,13 +1,11 @@
 module Main where
 
-import Author.ParseLib
-
-
 import System( getArgs )
 import Char
 import IO (readFile)
 import List (nubBy, partition, intersperse)
 
+import Author.ParseLib
 
 data Exp = App Id Exp  -- fun arg
          | Num Integer -- 1
@@ -17,6 +15,8 @@ data Exp = App Id Exp  -- fun arg
          | Lis [Exp]   -- [ e1 e2 e3 ]
 		 | Fun (Exp -> Exp)
 --    deriving Show
+
+data EvalResult = EvalResult { exp::Exp, lib::Library } deriving Show
 
 instance Show Exp where 
 	show (App id exp) = "App " ++ show id ++ " " ++ show exp
@@ -31,6 +31,7 @@ instance Show Exp where
 type Id = String
 type Library = [ Definition ]
 type Definition = ( Id, Exp )
+
 
 
 symbol :: Parser Char
@@ -138,14 +139,28 @@ partitionAttrs e = ([], e)
 unpackAttr :: Exp -> Definition
 unpackAttr (Att k v) = (k, v)
 
-eval :: Library -> Exp -> Exp
-eval l (App id arg) = case lookup id l of 
-    Just (Fun f) -> f arg -- needs eval?
+eval :: (Library, Exp) -> (Library, Exp)
+eval (l, Lis [])   = ( l,  Str "")
+eval (l, Lis [e])  = eval (l, e)
+eval (l, Lis (e:es)) = 
+	(l', e') = eval (l, e)
+eval (l, Att id e) = ( l', Att id (Ref id) ) -- not sure about this. infinite loopy goodness?
+	where
+		l' = (id, e') : l
+		e' = snd $ eval (l, e)
+eval (l, Ref r)    = case lookup r l of
+	Just v    -> eval (l, v)
+	Nothing   -> (l, Ref r)
+eval (l, e)        = ( l, e)
+
+
+eval ( l, (App id arg) ) = case lookup id l of 
+    Just (Fun f) -> (f arg) l -- needs eval?
     Nothing -> error $ "Undefined function '" ++ id ++ "'" -- Tag id as content
-eval l (Lis []) = Str ""
+eval l (Lis []) = (Str "") l
 eval l (Lis [e]) = eval l e
 eval l (Lis es) = Lis $ map (eval l) $ mergeLiterals $ map (eval l) es
-eval l (Att id e) = Att id $ eval l e
+eval l (Att id e) = (Att id $ eval l e) l'
 eval l (Ref r) = val
     where
         val = case lookup r l of

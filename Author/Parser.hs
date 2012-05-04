@@ -1,58 +1,76 @@
-module HtmlGen.Parser where
+module Author.Parser where
 
 import Char
 
-import HtmlGen.ParseLib
-import HtmlGen.Syntax
+import Author.Syntax
+
+
+symbol :: Parser Char
+symbol = satisfy (`elem` "!%&|*+-/:<>?@^_~.#") 
+
+digit :: Parser Char
+digit = satisfy isDigit
+
+letter :: Parser Char
+letter = satisfy isAlpha
+
+padding :: Parser Char
+padding = satisfy (`elem` "\n\r \t")
+
 
 token :: Parser a -> Parser a
 token p = p <| ignoredChars
-	where
-		ignoredChars = maybeSome $ satisfy (`elem` " \t\n\r;,")
+    where
+        ignoredChars = maybeSome $ satisfy (`elem` " \t;,")
 
 keyword :: String -> Parser String
 keyword = token . string
 
-stringLiteral :: Parser String
-stringLiteral =   token ( char '`'  |> maybeSome ( satisfy (/= '`')  ) <| char '`' )
-              <|> token ( char '"' 	|> maybeSome ( satisfy (/= '"')  ) <| char '"' )
-              <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
-symbolChar :: Parser Char
-symbolChar = satisfy isSymChar
-	where 
-		isSymChar c = isAlphaNum c || c == '_'
+parseId :: Parser String
+parseId = token $ pure (:) <*> (symbol <|> letter) <*> maybeSome (symbol <|> digit <|> letter)
 
-symbol :: Parser String
-symbol = token $ atLeastOne symbolChar
+parsePad :: Parser Exp
+parsePad = token $ pure Str <*> atLeastOne padding
 
+parseStr :: Parser Exp
+parseStr = pure Str <*> s
+    where 
+        s =  token ( char '`'  |> maybeSome ( satisfy (/= '`')  ) <| char '`' )
+         <|> token ( char '"'  |> maybeSome ( satisfy (/= '"')  ) <| char '"' )
+         <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
-expr :: Parser Exp
-expr =  pure App <*> symbol <*> expr
-	<|> pure Lit <*> stringLiteral
-	<|> pure Lis <*> keyword "[" |> maybeSome expr <| keyword "]"
-	<|> pure Sym <*> keyword "#" |> symbol
-	<|> pure Def <*> symbol <| keyword "=" <*> expr
+parseNum :: Parser Exp
+parseNum = pure Num <*> n
+    where
+        n = token $ pure (read) <*> atLeastOne digit
+
+parseApp :: Parser Exp
+parseApp = pure App <*> parseId <| maybeSome parsePad <*> parseExpr
+
+parseList :: Parser Exp
+parseList = pure Lis <*> keyword "[" |> maybeSome parseExpr <| keyword "]"
+
+parseAtt :: Parser Exp
+parseAtt = pure Att <*> parseId <| keyword "=" <*> parseExpr -- <| maybeSome parsePad
+
+parseRef :: Parser Exp
+parseRef = pure Ref <*> string "$" |> ( parseId <|> keyword "0" <|> keyword "1" )
+
+-- parseComment :: Parser Exp
+-- parseComment = pure Str <*> keyword "<!--" |> text <| keyword "-->" )
+	-- where
+		-- text = maybeSome satisfy (
+
+parseExpr :: Parser Exp
+parseExpr = parsePad <|> parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
+
 
 parse :: String -> Exp
 parse s = case junk of
-	""        -> Lis exps
-	otherwise -> error ("Parse error at '" ++ take 30 junk ++ "...'\n")
-	where
-		(junk, exps) = head $ maybeSome expr s
-
-
-simplify :: Exp -> Exp
--- simplify ( App id e ) = simplify Lis [ Def "__id" id , Def "__content" e , ]
-simplify (Lis []) = Lit ""
-simplify (Lis [e]) = e
-simplify (Lis es) = Lis $ map simplify $ mergeLiterals $ map simplify es
-simplify e = e
-
-
-mergeLiterals :: [Exp] -> [Exp]
-mergeLiterals ( (Lit s1):(Lit s2):es ) = mergeLiterals ( (Lit (s1 ++ s2)):es )
-mergeLiterals (e:es) = e:(mergeLiterals es)
-mergeLiterals [] = []
+    ""        -> Lis exps
+    otherwise -> error ("Parse error in '" ++ take 30 junk ++ "...'\n")
+    where
+        (junk, exps) = head $ maybeSome parseExpr s
 
 

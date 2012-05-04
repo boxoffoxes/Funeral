@@ -1,4 +1,4 @@
-module HtmlGen.ParseLib where
+module Author.ParseLib where
 
 import Data.Char
 

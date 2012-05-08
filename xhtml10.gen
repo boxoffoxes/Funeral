@@ -1,90 +1,84 @@
 !DOCTYPE = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
-html = <html[ xmlns="http://www.w3.org/1999/xhtml" ]
-
-
-
-
-a          = [ ?tag ?close ]
-abbr       = [ ?tag ]
-acronym    = [ ?tag ]
-address    = [ ?tag ]
-area       = [ ?tag ]
-b          = [ ?tag ]
-base       = [ ?tag ]
-bdo        = [ ?tag ]
-big        = [ ?tag ]
-blockquote = [ ?tag  ?block ?close ]
-body       = [ ?tag  ?block ?close ]
-br         = [ ?tag ]
-button     = [ ?tag ]
-caption    = [ ?tag ]
-cite       = [ ?tag ]
-code       = [ ?tag ]
-col        = [ ?tag ]
-colgroup   = [ ?tag  _block=1 ]
-dd         = [ ?tag ]
-del        = [ ?tag ]
-dfn        = [ ?tag ]
-div        = [ ?tag  _close=1 _block=1 ]
-dl         = [ ?tag  _block=1 ]
-dt         = [ ?tag ]
-em         = [ ?tag ]
-fieldset = [ ?tag ]
-form = [ ?tag  _block=1 ]
-frame = [ ?tag ]
-frameset = [ ?tag ]
-h1 = [ ?tag ]
-h2 = [ ?tag ]
-h3 = [ ?tag ]
-h4 = [ ?tag ]
-h5 = [ ?tag ]
-h6 = [ ?tag ]
-head    = [ ?tag  _close=1  _block=1 ]
-hr = [ ?tag ]
-html    = [ ?tag  xmlns="http://www.w3.org/1999/xhtml" _block=1 _close=1 ]
-i = [ ?tag ]
-iframe = [ ?tag ]
-img = [ ?tag ]
-input = [ ?tag ]
-ins = [ ?tag ]
-kbd = [ ?tag ]
-label = [ ?tag ]
-legend = [ ?tag ]
-li = [ ?tag ]
-link = [ ?tag ]
-map = [ ?tag ]
-meta    = [ ?tag ]
-noframes = [ ?tag ]
-noscript = [ ?tag ]
-object = [ ?tag ]
-ol = [ ?tag  _block=1 ]
-optgroup = [ ?tag  _block=1 ]
-option = [ ?tag ]
-p = [ ?tag  _close=1 ]
-param = [ ?tag ]
-pre = [ ?tag  _block=1 ]
-q = [ ?tag ]
-samp = [ ?tag ]
-script = [ ?tag  _close=1 _block=1  ]
-select = [ ?tag  _close=1 _block=1  ]
-small = [ ?tag ]
-span = [ ?tag ]
-strong = [ ?tag ]
-style = [ ?tag ]
-sub = [ ?tag ]
-sup = [ ?tag ]
-table = [ ?tag  _close=1 _block=1  ]
-tbody = [ ?tag  _block=1 ]
-td = [ ?tag  _close=1 ]
-textarea = [ ?tag  _close=1 ]
-tfoot = [ ?tag  _block=1 ]
-th = [ ?tag  _close=1 ]
-thead = [ ?tag  _block=1 ]
-title   = [ ?tag  _close=1 ]
-tr = [ ?tag  _close=1 _block=1  ]
-tt = [ ?tag ]
-ul = [ ?tag  _block=1 ]
-var = [ ?tag ]
-
+html       = !tag[ xmlns="http://www.w3.org/1999/xhtml" ; "html" ]
+a          = !tag "a"
+abbr       = !tag "abbr"
+acronym    = !tag "acronym"
+address    = !tag "address"
+area       = !emptyTag "area"
+b          = !tag "b"
+base       = !emptyTag "base"
+bdo        = !tag "bdo"
+big        = !tag "big"
+blockquote = !tag "blockquote"
+body       = !tag "body"
+br         = !emptyTag "br"
+button     = !tag "button"
+caption    = !tag "caption"
+cite       = !tag "cite"
+code       = !tag "code"
+col        = !emptyTag "col"
+colgroup   = !tag "colgroup"
+dd         = !tag "dd"
+del        = !tag "del"
+dfn        = !tag "dfn"
+div        = !tag "div"
+dl         = !tag "dl"
+dt         = !tag "dt"
+em         = !tag "em"
+fieldset   = !tag "fieldset"
+form       = !tag "form"
+frame      = !tag "frame"
+frameset   = !tag "frameset"
+h1         = !tag "h1"
+h2         = !tag "h2"
+h3         = !tag "h3"
+h4         = !tag "h4"
+h5         = !tag "h5"
+h6         = !tag "h6"
+head       = !tag "head"
+hr         = !emptyTag "hr"
+i          = !tag "i"
+iframe     = !tag "iframe"
+img        = !emptyTag "img"
+input      = !emptyTag "input"
+ins        = !tag "ins"
+kbd        = !tag "kbd"
+label      = !tag "label"
+legend     = !tag "legend"
+li         = !tag "li"
+link       = !emptyTag "link"
+map        = !tag "map"
+meta       = !emptyTag "meta"
+noframes   = !tag "noframes"
+noscript   = !tag "noscript"
+object     = !tag "object"
+ol         = !tag "ol"
+optgroup   = !tag "optgroup"
+option     = !tag "option"
+p          = !tag "p"
+param      = !emptyTag "param"
+pre        = !tag "pre"
+q          = !tag "q"
+samp       = !tag "samp"
+script     = !tag "script"
+select     = !tag "select"
+small      = !tag "small"
+span       = !tag "span"
+strong     = !tag "strong"
+style      = !tag "style"
+sub        = !tag "sub"
+sup        = !tag "sup"
+table      = !tag "table"
+tbody      = !tag "tbody"
+td         = !tag "td"
+textarea   = !tag "textarea"
+tfoot      = !tag "tfoot"
+th         = !tag "th"
+thead      = !tag "thead"
+title      = !tag "title"
+tr         = !tag "tr"
+tt         = !tag "tt"
+ul         = !tag "ul"
+var        = !tag "var"
 

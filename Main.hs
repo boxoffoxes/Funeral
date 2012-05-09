@@ -13,18 +13,18 @@ data Exp = App Id Exp  -- fun arg
          | Att Id Exp  -- key=value
          | Ref Id      -- $key
          | Lis [Exp]   -- [ e1 e2 e3 ]
-		 | Fun (Exp -> Exp)
+         | Fun (Exp -> Exp)
 --    deriving Show
 
 instance Show Exp where 
-	show (App id exp) = "App " ++ show id ++ " " ++ show exp
-	show (Num n) = "Num " ++ show n
-	show (Str s) = "Str " ++ show s
-	show (Att id e) = "Att " ++ show id ++ " " ++ show e
-	show (Lis es) = "Lis " ++ show es
-	show (Ref r) = "Ref " ++ show r
-	show (Fun f) = "<function>"
-	
+    show (App id exp) = "App " ++ show id ++ " " ++ show exp
+    show (Num n) = "Num " ++ show n
+    show (Str s) = "Str " ++ show s
+    show (Att id e) = "Att " ++ show id ++ " " ++ show e
+    show (Lis es) = "Lis " ++ show es
+    show (Ref r) = "Ref " ++ show r
+    show (Fun f) = "<function>"
+    
 
 type Id = String
 type Library = [ Definition ]
@@ -86,8 +86,8 @@ parseRef = pure Ref <*> string "$" |> ( parseId <|> keyword "0" <|> keyword "1" 
 
 -- parseComment :: Parser Exp
 -- parseComment = pure Str <*> keyword "<!--" |> text <| keyword "-->" )
-	-- where
-		-- text = maybeSome satisfy (
+    -- where
+        -- text = maybeSome satisfy (
 
 parseExpr :: Parser Exp
 parseExpr = parsePad <|> parseApp <|> parseStr <|> parseNum <|> parseRef <|> parseAtt <|> parseList
@@ -104,7 +104,7 @@ parse s = case junk of
 -- if each top-level declaration stores its own scope, 
 -- new declarations can maybe extend older ones, forth-style;
 coreLibrary = [ 
-				("!tag", Fun fnTag), ("!emptyTag", Fun fnEmptyTag) ]
+                ("!tag", Fun fnTag), ("!emptyTag", Fun fnEmptyTag) ]
 
 buildLibrary :: Exp -> Library
 buildLibrary e = getDefs coreLibrary e
@@ -119,39 +119,40 @@ getDef _ = []
 
 stripDefs :: Exp -> Exp
 stripDefs (Lis es) = Lis es'
-	where
-		es' = map stripDefs $ filter notDef es
-		notDef (Att _ _) = False
-		notDef _  = True
+    where
+        es' = map stripDefs $ filter notDef es
+        notDef (Att _ _) = False
+        notDef _  = True
 stripDefs e = e
 
-partitionAttrs :: Exp -> ([Definition], Exp)
-partitionAttrs (Lis es) = (map unpackAttr as, Lis content)
+partitionAttrs :: Exp -> ([Exp], [Exp])
+partitionAttrs (Lis es) = (as, content)
     where
         (as, content) = partition isAttr es
         isAttr (Att _ _) = True
         isAttr _ = False
-partitionAttrs a@(Att _ _) = ([unpackAttr a], Lis [])
-partitionAttrs e = ([], e)
+partitionAttrs a@(Att _ _) = ([a], [])
+partitionAttrs e = ([], [e])
 
 unpackAttr :: Exp -> Definition
 unpackAttr (Att k v) = (k, v)
 
 eval :: (Library, Exp) -> (Library, Exp)
 eval (l, App id arg) = case lookup id l of
-    Just (Fun f) -> (l, f arg)
-    Just x       -> error $ "Can't apply a non-function value: " ++ show x
-    Nothing      -> error $ "Undefined function '" ++ id ++ "'"
+    Just (Fun f)  -> (l, f arg)
+    Just (Lis es) -> eval (map unpackAttr (fst $ partitionAttrs arg ) ++ l, Lis es)
+    Just x        -> error $ "Can't apply a non-function value: " ++ show x
+    Nothing       -> error $ "Undefined function '" ++ id ++ "'"
 eval (l, Lis [])    = ( l,  Str "")
 eval (l, Lis [e])   = eval (l, e)
 eval (l, Lis es)    = (l, Lis $ evalList l es)
-eval (l, Att id e)  = ( l', Att id e' ) -- not sure about this. infinite loopy goodness?
-	where
-		l' = (id, e') : l
-		e' = snd $ eval (l, e)
+eval (l, Att id e)  = ( l', Att id e' )
+    where
+        l' = (id, e') : l
+        e' = snd $ eval (l, e)
 eval (l, Ref r)     = case lookup r l of
-	Just v    -> eval (l, v)
-	Nothing   -> (l, Ref r)
+    Just v    -> eval (l, v)
+    Nothing   -> (l, Ref r)
 eval (l, e)         = (l, e)
 
 evalList :: Library -> [Exp] -> [Exp]
@@ -177,30 +178,33 @@ eval l e = e
 -}
 -- libraryLookup :: Library -> String -> Exp
 -- libraryLookup l id = case lookup id l of 
-	-- Just  e -> e
-	-- Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
+    -- Just  e -> e
+    -- Nothing -> error $ "Undefined tag '" ++ id ++ "'\n"
 
 fnTag :: Exp -> Exp
 fnTag (Str s) = Fun $ makeTag False s
+fnTag e = error $ "Attempt to name a function with something other than a string: " ++ show e
 
 fnEmptyTag :: Exp -> Exp
 fnEmptyTag (Str s) = Fun $ makeTag True s
+fnEmptyTag e = error $ "Attempt to name a function with something other than a string: " ++ show e
 
 makeTag :: Bool -> String -> Exp -> Exp
-makeTag empty id arg = Str $ ('<':id) ++ attrStr ++ closure
-	where
-		(as, c) = partitionAttrs arg
-		attrStr = case as of
-			[] -> ""
-			_  -> renderAttrs as
-		content = render c
-		closure = case (content, empty) of
-			("", True)  -> " />"
-			("", False) -> "></" ++ id ++ ">"
-			(e,  _)     -> ">" ++ content ++ "</" ++ id ++ ">"
+makeTag empty id arg = Lis $ ( Str ('<':id) : attrs ) ++ closure
+    where
+        (as, cs) = partitionAttrs arg
+        attrs   = case as of
+            [] -> []
+            _  ->  Str " " : ( intersperse (Str " ") $ map collapse as )
+        closure = case (cs, empty) of
+            ([], True)  -> [ Str " />" ]
+            ([], False) -> [ Str $ "></" ++ id ++ ">" ]
+            (_,  _)     -> ((Str ">") : cs ) ++ [ Str $ "</" ++ id ++ ">" ]
+        collapse :: Exp -> Exp
+        collapse (Att k v) = Lis [ Str (k ++ "=\""), v, Str "\""]
 
 
-	
+    
 
 
 mergeLiterals :: [Exp] -> [Exp]

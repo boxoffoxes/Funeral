@@ -126,12 +126,53 @@ primEq ( l, Num  a : Num  b : st ) = (l, Bool (a == b) : st)
 primEq ( l, Str  a : Str  b : st ) = (l, Bool (a == b) : st)
 primEq ( l, a      : b      : st ) = (l, Bool False : st)
 
+{- primDip :: State -> State
+primDip (l, Fun f : e : es ) = (l', e:es')
+	where
+		(l', es') = f (l, es) -}
+
+primDrop :: State -> State
+primDrop (l, _:st) = (l, st)
+
+primSwap :: State -> State
+primSwap (l, a:b:st) = (l, b:a:st)
+
+primRot :: State -> State
+primRot (l, a:b:c:st) = (l, c:a:b:st)
+
+primDup :: State -> State
+primDup (l, a:st) = (l, a:a:st)
+
+{-primMap :: State -> State
+primMap (l, Fun f:List es:st) = (l, List es':st)
+	where
+		es' = map f es
+
+primFold :: State -> State
+primFold (l, Fun f:List es:e:st) = (l, e':st)
+	where
+		e' = foldr f es
+-}
+
+transform :: State -> State
+transform (l, Word w:st) = case find (\(Defn id f) -> id == w) l of
+	Just (Defn _ e) -> transform (l, e:st)
+	Nothing -> (l, Word w : st) -- eval st first?
+transform (l, Fun f:Fun g:st) = transform (l, Fun (f . g):st)
+transform (l, List [e]:st) = transform (l, e:st)
+transform (l, List es:st) = transform (l, es)
+transform (l, e:es) = (l', e:es')
+	where
+		(l', es') = transform (l, es)
+transform (l, []) = (l, [])
+
 eval :: State -> State
 eval (l, Word w:st) = case find (\(Defn id f) -> id == w) l of
 	Just d  -> case body d of 
 		List es -> eval (l, es ++ st)
 		e       -> eval (l, e : st)
 	Nothing -> (l, Word w : st)
+eval (l, Fun f : Fun g : st) = (l, Fun (f . g) : st)
 eval (l, Fun f : st) = eval $ f $ eval (l, st)
 -- eval (l, List [] :st) = eval (l, st)
 -- eval (l, List [e]:st) = eval (l, e:st)
@@ -140,6 +181,8 @@ eval (l, e:es) = (l', e:es')
 	where
 		(l', es') = eval (l, es)
 eval (l, []) = (l, [])
+
+
 
 numericBinaryPrim :: (Integer -> Integer -> Integer) -> State -> State
 numericBinaryPrim f (l, (Num x  : Num y  : st')) = (l, Num  (f x y) : st')
@@ -159,6 +202,12 @@ prims = [
 	Defn "not" (Fun primNot),
 	Defn "=" (Fun primEq),
 	
+	Defn "swap" (Fun primSwap),
+	--Defn "dip" (Fun primDip),
+	Defn "drop" (Fun primDrop),
+	Defn "rot" (Fun primRot),
+	Defn "dup" (Fun primDup),
+
 	Defn "concat" (Fun primConcat),
 	Defn "head" (Fun primHead),
 	Defn "tail" (Fun primTail),
@@ -174,5 +223,5 @@ main = do
     -- sources <- mapM readFile args
     let stack = parse $ concat args --sources
     let lib = prims
-    putStrLn $ show $ eval (lib, stack)
+    putStrLn $ show $ transform (lib, stack)
 

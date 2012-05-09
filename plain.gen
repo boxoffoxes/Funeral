@@ -1,0 +1,25 @@
+options_for = [
+	option "-- Please select one"
+	option "Option 1"
+	option "Option 2"
+	option "Option 3"
+]
+checkbox = label[ for=$name class="labelForCheckbox" ; 
+	input [ type="checkbox" name=$name id=$name ]
+	$_label
+]
+pick_list = label[ for=$name class="labelForSelect" ;
+	$_label
+	select [ name=$name id=$name ;
+		options_for $name
+	]
+]
+text = label[ for=$name class="labelForTextInput" ;
+	$_label
+	input [ type="text" name=$name id=$name ]
+]
+textarea = label[ for=$name class="labelForTextarea" ;
+	$_label
+	textarea [ name=$name id=$name ]
+]
+

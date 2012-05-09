@@ -1,6 +1,7 @@
 !DOCTYPE = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
 html       = !tag[ xmlns="http://www.w3.org/1999/xhtml" ; "html" ]
+html       = !tag "html"
 a          = !tag "a"
 abbr       = !tag "abbr"
 acronym    = !tag "acronym"
@@ -81,4 +82,3 @@ tr         = !tag "tr"
 tt         = !tag "tt"
 ul         = !tag "ul"
 var        = !tag "var"
-

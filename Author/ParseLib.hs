@@ -33,6 +33,9 @@ pSnd :: Parser (a, b) -> Parser b
 pSnd p = pure (\(a, b) -> b) <*> p
 
 
+anyChar :: Parser Char
+anyChar "" = []
+anyChar (c:s) = [(s, c)]
 
 satisfy :: (Char -> Bool) -> Parser Char
 satisfy f "" = []

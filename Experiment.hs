@@ -5,6 +5,8 @@ import Char
 import IO (readFile)
 import List (nubBy, partition, intersperse, find)
 
+import Debug.Trace
+
 import Author.ParseLib
 
 data Expr = Word Id
@@ -117,7 +119,7 @@ makeStateful f (l, st) = (l, f st)
 primDef :: State -> State
 primDef (l, Word id:e:st') = (l', st')
     where
-        l' = (Defn id 0 e) : l -- TODO
+        l' = (Defn id 0 e) : l -- TODO: arity
 
 primType :: State -> State
 primType (l, st@(Quot _:_)) = (l, strToQuote "quotation":st)
@@ -172,7 +174,19 @@ primApply (l, st) = primEval (l, st)
 
 primEval :: State -> State -- do this depth-first!
 primEval (l, []) = (l, [])
+primEval (l, Word w:st) = case find (\(Defn id a f) -> id == w) l of
+    Nothing -> (l, Word w:st)
+    Just d  -> primEval (l, (body d):st)
+primEval (l, Fun f:es) = f (l, es)
+primEval (l, e:st) = (l, e:st)
 
+descend :: State -> State
+descend (l, []) = (l, [])
+descend (l, e:st) = primEval (l', e:st')
+    where
+        (l', st') = descend (l, st)
+
+{-
 primEval (l, Word w:st) = case find (\(Defn id a f) -> id == w) l of
     Nothing -> error $ "undefined word " ++ w
     Just d  -> primEval (l', (body d):st')
@@ -184,6 +198,7 @@ primEval (l, e:es) = (l', e:es')
     where
         (l', es') = primEval (l, es)
 primEval (l, []) = (l, [])
+-}
 
 primCompose :: State -> State
 primCompose (l, Fun f:Fun g:st) = (l, Fun (f . g):st)
@@ -296,8 +311,8 @@ eval (l, []) = (l, [])
 main :: IO ()
 main = do
     args <- getArgs
-    sources <- mapM readFile ("headstone.fun":args)
+    sources <- mapM readFile (args ++ ["headstone.fun"])
     let stack = parse $ concat sources --args
     let lib = prims
-    putStrLn $ show $ primEval (lib, stack)
+    putStrLn $ show $ descend (lib, trace (show stack) stack)
 

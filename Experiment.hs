@@ -15,6 +15,16 @@ data Expr = Word Id
           | Num Int
           | Fun (State -> State)
 
+instance Eq Expr where
+    Word w == Word x    =    w == x
+    Num  n == Num  m    =    n == m
+    Bool b == Bool c    =    b == c
+    Chr  c == Chr  d    =    c == d
+    Quot es == Quot xs  =    es == xs
+    Fun  _ == Fun _     =    error "Cannot compare functions"
+    _      == _         =    False
+    
+
 instance Show Expr where
     show (Word id) = id
     show (Num n) = show n
@@ -25,9 +35,10 @@ instance Show Expr where
 
 
 data Defn = Defn {
-    name :: Id,
-    body :: Expr}
-        deriving Show
+        name :: Id,
+        arity :: Int,
+        body :: Expr
+    } deriving Show
 
 
 type Id = String
@@ -99,16 +110,14 @@ parse s = case junk of
 -- Primitive functions
 ---------------------------------------------------------------------
 
+-- wrapper for functions that don't manipulate the library
+makeStateful :: (Stack -> Stack) -> State -> State
+makeStateful f (l, st) = (l, f st)
+
 primDef :: State -> State
 primDef (l, Word id:e:st') = (l', st')
     where
-        l' = (Defn id e) : l
-
-primTail :: State -> State
-primTail (l, (Quot (e:es) : st')) = (l, Quot es : st')
-
---primConcat :: State -> State
---primConcat (l, Quot es:st') = (l, Str (concat $ map show es) : st')
+        l' = (Defn id 0 e) : l -- TODO
 
 primType :: State -> State
 primType (l, st@(Quot _:_)) = (l, strToQuote "quotation":st)
@@ -161,10 +170,14 @@ primApply (l, Fun f:st) = primEval $ f (l, st) -- what if we only apply fully-sa
 primApply (l, Quot es:st) = primEval (l, es ++ st)
 primApply (l, st) = primEval (l, st)
 
-primEval :: State -> State
-primEval (l, Word w:st) = case find (\(Defn id f) -> id == w) l of
+primEval :: State -> State -- do this depth-first!
+primEval (l, []) = (l, [])
+
+primEval (l, Word w:st) = case find (\(Defn id a f) -> id == w) l of
     Nothing -> error $ "undefined word " ++ w
-    Just d  -> primEval (l, (body d):st)
+    Just d  -> primEval (l', (body d):st')
+        where
+            (l', st') = primEval (l, st)
 primEval (l, st@(Fun f:Fun g:_)) = primEval $ primCompose (l, st)
 -- primEval (l, st@(Fun f:_)) = primEval $ primApply (l, st) -- wrong! needs to work from the inside out.
 primEval (l, e:es) = (l', e:es')
@@ -209,34 +222,33 @@ numericBinaryPrim f (l, (Num x  : Num y  : st')) = (l, Num  (f x y) : st')
 numericBinaryPrim f (l, st) = (l, Fun (numericBinaryPrim f):st)
 
 prims = [
-    Defn "+" (Fun $ numericBinaryPrim (+)),
-    Defn "-" (Fun $ numericBinaryPrim (-)),
-    Defn "*" (Fun $ numericBinaryPrim (*)),
-    Defn "/" (Fun $ numericBinaryPrim div),
-    Defn "%" (Fun $ numericBinaryPrim mod),
+    Defn "+" 2 (Fun $ numericBinaryPrim (+)),
+    Defn "-" 2 (Fun $ numericBinaryPrim (-)),
+    Defn "*" 2 (Fun $ numericBinaryPrim (*)),
+    Defn "/" 2 (Fun $ numericBinaryPrim div),
+    Defn "%" 2 (Fun $ numericBinaryPrim mod),
 
-    Defn "or"  (Fun primOr),
-    Defn "and" (Fun primAnd),
-    Defn "not" (Fun primNot),
-    Defn "="  (Fun primEq),
+    Defn "not" 1 (Fun primNot),
+    Defn "or"  2 (Fun primOr),
+    Defn "and" 2 (Fun primAnd),
+    Defn "="   2 (Fun primEq),
     
-    Defn "swap" (Fun primSwap),
-    Defn "dip" (Fun primDip),
-    Defn "drop" (Fun primDrop),
-    Defn "rot" (Fun primRot),
-    Defn "dup" (Fun primDup),
+    Defn "swap" 2 (Fun primSwap),
+    Defn "dip"  2 (Fun primDip),
+    Defn "drop" 1 (Fun primDrop),
+    Defn "rot"  2 (Fun primRot),
+    Defn "dup"  1 (Fun primDup),
 
-	Defn "apply" (Fun primApply),
-    Defn "compose" (Fun primCompose),
-    Defn "eval" (Fun primEval),
+	Defn "apply"   1 (Fun primApply),
+    Defn "compose" 2 (Fun primCompose),
+--    Defn "eval" ? (Fun primEval),
 
-    Defn "cons" (Fun primCons),
-    Defn "uncons" (Fun primHeadTail),
-    Defn "strip" (Fun primStrip),
+    Defn "cons"   2 (Fun primCons),
+    Defn "uncons" 1 (Fun primHeadTail),
 
-    Defn "type" (Fun primType),
+    Defn "type" 1 (Fun primType),
 
-    Defn "def" (Fun primDef) ]
+    Defn "def" 2 (Fun primDef) ]
 
 
 

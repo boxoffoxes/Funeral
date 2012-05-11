@@ -41,6 +41,11 @@ satisfy :: (Char -> Bool) -> Parser Char
 satisfy f "" = []
 satisfy f (c:s) = [(s, c) | f c]
 
+anyCharExcept :: String -> Parser Char
+anyCharExcept s = satisfy (not . (elem' s) )
+    where
+        elem' a b = elem b a
+
 char :: Char -> Parser Char
 char c = satisfy ( == c )
 

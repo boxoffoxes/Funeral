@@ -12,10 +12,12 @@ import Author.ParseLib
 data Expr = Word Id
           | Quot [Expr]
           | Bool Bool
+          | Pair Expr Expr
           -- | Str String
           | Chr Char
           | Num Int
           | Fun (State -> State)
+          | Comm String
 
 instance Eq Expr where
     Word w == Word x    =    w == x
@@ -23,6 +25,7 @@ instance Eq Expr where
     Bool b == Bool c    =    b == c
     Chr  c == Chr  d    =    c == d
     Quot es == Quot xs  =    es == xs
+    Pair e f == Pair x y =   e == x && x == y
     Fun  _ == Fun _     =    error "Cannot compare functions"
     _      == _         =    False
     
@@ -31,15 +34,16 @@ instance Show Expr where
     show (Word id) = id
     show (Num n) = show n
     show (Bool b) = '?' : show b
+    show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
     show (Quot es) = "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
     show (Fun _) = "<function>"
+    show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
 
 data Defn = Defn {
         name :: Id,
-        arity :: Int,
-        body :: Expr
+        body :: [Expr]
     } deriving Show
 
 
@@ -55,8 +59,8 @@ digit = satisfy isDigit
 letter :: Parser Char
 letter = satisfy isAlpha
 
-padding :: Parser Char
-padding = satisfy (`elem` "\n\r \t")
+whiteSpace :: Parser Char
+whiteSpace = satisfy (`elem` "\n\r \t")
 
 strToQuote :: String -> Expr
 strToQuote s = Quot (map Chr s)
@@ -64,13 +68,13 @@ strToQuote s = Quot (map Chr s)
 token :: Parser a -> Parser a
 token p = p <| ignoredChars
     where
-        ignoredChars = maybeSome $ satisfy (`elem` " \t;,\n\r")
+        ignoredChars = maybeSome $ whiteSpace
 
 keyword :: String -> Parser String
 keyword = token . string
 
 parseChar :: Parser Expr
-parseChar = pure Chr <*> char '.' |> anyChar
+parseChar = token $ pure Chr <*> char '.' |> anyChar
 
 parseString :: Parser Expr
 parseString = pure strToQuote <*> s
@@ -84,10 +88,17 @@ parseNumber = pure Num <*> n
     where
         n = token $ pure (read) <*> atLeastOne digit
 
+parseComment :: Parser Expr
+parseComment = token $ pure Comm <*> keyword "--" |> ( maybeSome $ anyCharExcept "\n\r" ) <| ( maybeSome $ satisfy (`elem` "\n\r") )
+
+parsePair :: Parser Expr
+parsePair = pure Pair <*> keyword "(" |> parseExpr <*> parseExpr <| keyword ")"
+
 parseId :: Parser String
-parseId = token $ atLeastOne ( satisfy (not . (elem' " \t\n\r[]\"'`") ) )
+parseId = token $ pure (:) <*> anyCharExcept reservedPrefixes <*> ( maybeSome $ anyCharExcept reservedChars )
     where
-        elem' a b = elem b a
+        reservedPrefixes = ".0123456789" ++ reservedChars
+        reservedChars = " \t\n\r\0[]\"'`()"
 
 parseBool :: Parser Expr
 parseBool = pure Bool <*> ( pure read <*> ( keyword "True" <|> keyword "False" ) )
@@ -96,10 +107,10 @@ parseWord :: Parser Expr
 parseWord = pure Word <*> parseId
 
 parseQuot :: Parser Expr
-parseQuot = pure Quot <*> keyword "[" |> maybeSome parseExpr <| keyword "]"
+parseQuot = token $ pure Quot <*> keyword "[" |> maybeSome parseExpr <| keyword "]"
 
 parseExpr :: Parser Expr
-parseExpr = parseBool <|> parseChar <|> parseNumber <|> parseQuot <|> parseString <|> parseWord
+parseExpr = parseComment <|> parseBool <|> parseChar <|> parseNumber <|> parseQuot <|> parsePair <|> parseString <|> parseWord
 
 parse :: String -> [Expr]
 parse s = case junk of
@@ -112,73 +123,93 @@ parse s = case junk of
 -- Primitive functions
 ---------------------------------------------------------------------
 
--- wrapper for functions that don't manipulate the library
-makeStateful :: (Stack -> Stack) -> State -> State
-makeStateful f (l, st) = (l, f st)
+-- Stack -> Stack
+
+fnNot :: Stack -> Stack
+fnNot  (Bool False:st) = Bool True:st
+fnNot  (e:st) = Bool False:st
+
+fnOr :: Stack -> Stack
+fnOr (x:y:st) = case truthValueOf x of
+    True  -> x:st
+    False -> y:st
+        
+fnAnd :: Stack -> Stack
+fnAnd (x:y:st) = case truthValueOf x of
+    False -> x:st
+    True  -> y:st
+
+fnNull :: Stack -> Stack
+fnNull (Quot []:st) = Bool True:st
+fnNull (e:st) = Bool False:st
+
+truthValueOf :: Expr -> Bool
+truthValueOf (Bool False) = False
+truthValueOf e = True
+
+fnType :: Stack -> Stack
+fnType st@(Quot _:_)   = strToQuote "quotation":st
+fnType st@(Word _:_)   = strToQuote "word":st
+fnType st@(Bool _:_)   = strToQuote "boolean":st
+fnType st@(Chr _:_)    = strToQuote "character":st
+fnType st@(Fun _:_)    = strToQuote "function":st
+fnType st@(Num _:_)    = strToQuote "number":st
+fnType st@(Pair _ _:_) = strToQuote "number":st
+
+-- fnPutChar :: Stack -> Stack
+-- fnPutChar (Chr c:st) = st
+
+fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
+    where
+        (as, bs) = splitAt n es
+
+-- fnFoldr (Quot fn:e:Quot es:st) = 
+
+stackFunctions = [
+    ( "drop", \(e:st) -> st ),
+    ( "swap", \(e:f:st) -> f:e:st ),
+    ( "rot",  \(e:f:g:st) -> g:e:f:st ),
+    ( "dup",  \(e:st) -> e:e:st ),
+
+    ( "=",    \(e:f:st) -> Bool (e == f):st ),
+    ( "not",  fnNot ),
+    ( "or",   fnOr ),
+    ( "and",  fnAnd ),
+
+    ( "quote",   \(e:st) -> Quot [e]:st ),
+    ( "compose", \(Fun f:Fun g:st) -> Fun (f . g):st ),
+    ( "cons",    \(e:Quot es:st) -> Quot (e:es):st ),
+    ( "uncons",  \(Quot (e:es):st) -> e:Quot es:st ),
+    ( "splitAt", fnSplitAt ),
+
+    ( "type",    fnType ) ]
+
+-- State -> State functions
 
 primDef :: State -> State
-primDef (l, Word id:e:st') = (l', st')
+primDef (l, Word id:Quot es:st') = (l', st')
     where
-        l' = (Defn id 0 e) : l -- TODO: arity
-
-primType :: State -> State
-primType (l, st@(Quot _:_)) = (l, strToQuote "quotation":st)
-primType (l, st@(Word _:_)) = (l, strToQuote "word":st)
-primType (l, st@(Bool _:_)) = (l, strToQuote "boolean":st)
-primType (l, st@(Chr _:_))  = (l, strToQuote "character":st)
-primType (l, st@(Fun _:_))  = (l, strToQuote "function":st)
-primType (l, st@(Num _:_))  = (l, strToQuote "number":st)
-
-primNot :: State -> State
-primNot (l, Bool b:st) = (l, Bool (not b):st)
-
-primEq :: State -> State
-primEq ( l, Word a : Word b : st ) = (l, Bool (a == b) : st)
-primEq ( l, Bool a : Bool b : st ) = (l, Bool (a == b) : st)
-primEq ( l, Num  a : Num  b : st ) = (l, Bool (a == b) : st)
-primEq ( l, Chr  a : Chr  b : st ) = (l, Bool (a == b) : st)
-primEq ( l, a      : b      : st ) = (l, Bool False : st)
+        l' = (Defn id es) : l
 
 primDip :: State -> State
 primDip (l, Quot q : e : es ) = (l', e:es')
     where
-        (l', es') = primEval (l, es)
-
-primDrop :: State -> State
-primDrop (l, _:st) = (l, st)
-
-primSwap :: State -> State
-primSwap (l, a:b:st) = (l, b:a:st)
-
-primRot :: State -> State
-primRot (l, a:b:c:st) = (l, c:a:b:st)
-
-primDup :: State -> State
-primDup (l, a:st) = (l, a:a:st)
-
-{-primMap :: State -> State
-primMap (l, Fun f:Quot es:st) = (l, Quot es':st)
-    where
-        es' = map f es
-
-primFold :: State -> State
-primFold (l, Fun f:Quot es:e:st) = (l, e':st)
-    where
-        e' = foldr f es
--}
+        (l', es') = primApply (l, Quot q:es)
 
 primApply :: State -> State
-primApply (l, Fun f:st) = primEval $ f (l, st) -- what if we only apply fully-saturated functions?
-primApply (l, Quot es:st) = primEval (l, es ++ st)
-primApply (l, st) = primEval (l, st)
+primApply (l, Fun f:st)     = descend $ f (l, st)
+primApply (l, Quot es:st)   = descend (l, es ++ st)
+primApply (_, e:st)         = error $ "Don't know how to apply " ++ show e
+-- primApply (l, st)           = descend (l, st)
 
 primEval :: State -> State -- do this depth-first!
-primEval (l, []) = (l, [])
-primEval (l, Word w:st) = case find (\(Defn id a f) -> id == w) l of
-    Nothing -> (l, Word w:st)
-    Just d  -> primEval (l, (body d):st)
-primEval (l, Fun f:es) = f (l, es)
-primEval (l, e:st) = (l, e:st)
+primEval (l, [])         = (l, [])
+primEval (l, Word w:st)  = case find (\(Defn id f) -> id == w) l of
+                                Nothing -> (l, Word w:st)
+                                Just d  -> descend (l, (body d) ++ st)
+primEval t@(l, Fun f:st) = primApply t -- f (l, st)
+primEval (l, Comm _:st)  = (l, st)
+primEval (l, e:st)       = (l, e:st)
 
 descend :: State -> State
 descend (l, []) = (l, [])
@@ -186,132 +217,40 @@ descend (l, e:st) = primEval (l', e:st')
     where
         (l', st') = descend (l, st)
 
-{-
-primEval (l, Word w:st) = case find (\(Defn id a f) -> id == w) l of
-    Nothing -> error $ "undefined word " ++ w
-    Just d  -> primEval (l', (body d):st')
-        where
-            (l', st') = primEval (l, st)
-primEval (l, st@(Fun f:Fun g:_)) = primEval $ primCompose (l, st)
--- primEval (l, st@(Fun f:_)) = primEval $ primApply (l, st) -- wrong! needs to work from the inside out.
-primEval (l, e:es) = (l', e:es')
-    where
-        (l', es') = primEval (l, es)
-primEval (l, []) = (l, [])
--}
-
-primCompose :: State -> State
-primCompose (l, Fun f:Fun g:st) = (l, Fun (f . g):st)
-
-primQuote :: State -> State
-primQuote (l, e:st) = (l, Quot [e]:st)
-
-primCons :: State -> State
-primCons (l, e:Quot es:st) = (l, Quot (e:es):st)
-
-primHeadTail :: State -> State
-primHeadTail (l, (Quot (e:es):st)) = (l, e:Quot es:st)
-
-primTake :: State -> State
-primTake (l, Num n:(Quot es):st) = (l, Quot (take n es):st)
-
-primStrip :: State -> State
-primStrip (l, Num n:(Quot es):st) = (l, Quot (drop n es):st)
-
-primOr :: State -> State
-primOr (l, x:y:st) = case truthValueOf x of
-    True  -> (l, x:st)
-    False -> (l, y:st)
-        
-primAnd :: State -> State
-primAnd (l, x:y:st) = case truthValueOf x of
-    False -> (l, x:st)
-    True  -> (l, y:st)
-
-truthValueOf :: Expr -> Bool
-truthValueOf (Bool False) = False
-truthValueOf e = True
-
 numericBinaryPrim :: (Int -> Int -> Int) -> State -> State
 numericBinaryPrim f (l, (Num x  : Num y  : st')) = (l, Num  (f x y) : st')
 numericBinaryPrim f (l, st) = (l, Fun (numericBinaryPrim f):st)
 
-prims = [
-    Defn "+" 2 (Fun $ numericBinaryPrim (+)),
-    Defn "-" 2 (Fun $ numericBinaryPrim (-)),
-    Defn "*" 2 (Fun $ numericBinaryPrim (*)),
-    Defn "/" 2 (Fun $ numericBinaryPrim div),
-    Defn "%" 2 (Fun $ numericBinaryPrim mod),
+-- wrapper for functions that don't manipulate the library
 
-    Defn "not" 1 (Fun primNot),
-    Defn "or"  2 (Fun primOr),
-    Defn "and" 2 (Fun primAnd),
-    Defn "="   2 (Fun primEq),
-    
-    Defn "swap" 2 (Fun primSwap),
-    Defn "dip"  2 (Fun primDip),
-    Defn "drop" 1 (Fun primDrop),
-    Defn "rot"  2 (Fun primRot),
-    Defn "dup"  1 (Fun primDup),
+makeStateful :: (Stack -> Stack) -> State -> State
+makeStateful f (l, st) = (l, f st)
 
-	Defn "apply"   1 (Fun primApply),
-    Defn "compose" 2 (Fun primCompose),
---    Defn "eval" ? (Fun primEval),
+makeDefn :: (String, Stack -> Stack) -> Defn
+makeDefn (id, f) = Defn id [Fun $ makeStateful f]
 
-    Defn "cons"   2 (Fun primCons),
-    Defn "uncons" 1 (Fun primHeadTail),
+prims = (map makeDefn stackFunctions) ++ [
+    Defn "dip" [Fun primDip],
 
-    Defn "type" 1 (Fun primType),
+    Defn "+" [Fun $ numericBinaryPrim (+)],
+    Defn "-" [Fun $ numericBinaryPrim (-)],
+    Defn "*" [Fun $ numericBinaryPrim (*)],
+    Defn "/" [Fun $ numericBinaryPrim div],
+    Defn "%" [Fun $ numericBinaryPrim mod],
 
-    Defn "def" 2 (Fun primDef) ]
+    Defn "def" [Fun primDef] ]
 
 
 
 
 ---------------------------------------------------------------------
--- AST transformation and evaluation
+-- Argument processing and main
 ---------------------------------------------------------------------
-
-{- transform :: State -> State
-transform (l, Word w:st) = case find (\(Defn id f) -> id == w) l of
-    Just (Defn _ e) -> transform (l, e:st)
-    Nothing -> (l, Word w : st) -- eval st first?
-        -- where
-            -- (l', st') = eval (l, st)
-transform (l, Fun f:Fun g:st) = transform $ primCompose
-transform (l, Quot [e]:st) = transform (l, e:st)
-transform (l, Quot es:st) = transform (l, es)
-transform (l, e:es) = (l', e:es')
-    where
-        (l', es') = transform (l, es)
-transform (l, []) = (l, [])
-
-eval :: State -> State
-eval (l, Word w:st) = case find (\(Defn id f) -> id == w) l of
-    Just d  -> eval (l, body d : st)
-    Nothing -> (l', Word w : st')
-        where
-            (l', st') = eval (l, st)
-eval (l, Fun f : Fun g : st) = (l, Fun (f . g) : st)
-eval (l, [Fun f]) = (l, [Fun f])
-eval (l, Fun f : st) = eval $ f $ eval (l, st)
--- eval (l, Quot [Fun f]:st) = eval (l, Fun f:st)
--- eval (l, Quot es:st) = (l', Quot es':st')
-    -- where
-        -- (_, es') = eval (l, es)
-        -- (l', st') = eval (l, st)
--- eval (l, Quot es:st) = eval (l, Quot f:st)
--- eval (l, Quot es:st) = eval (l, es ++ st)
-eval (l, e:es) = (l', e:es')
-    where
-        (l', es') = eval (l, es)
-eval (l, []) = (l, [])
--}
 
 main :: IO ()
 main = do
     args <- getArgs
-    sources <- mapM readFile (args ++ ["headstone.fun"])
+    sources <- mapM readFile (args ++ ["headstone.fn"])
     let stack = parse $ concat sources --args
     let lib = prims
     putStrLn $ show $ descend (lib, trace (show stack) stack)

@@ -1,0 +1,31 @@
+and *null [1 2 3]
+
+*null [1 2 3]
+
+ifNull [] "a" "b"
+ifNull [1] "c" "d"
+dip [+] [] 1 2
+map [+ 1] [1 2 3]
+map [inc] [4 5 6]
+
+def inc [+ 1]
+
+-- sum [1 2 3]
+
+
+def sum [ sum + dip [uncons] ]
+
+
+
+
+
+
+-- map quote list  ( q es -> es )
+--def map [
+    --cons          -- e' -> es''
+    --dip [
+        --apply         -- q e -> e'
+        --dip [uncons]  -- es -> e es'
+    --]
+    --dup 
+--]

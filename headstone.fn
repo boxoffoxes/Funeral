@@ -1,9 +1,12 @@
-def then []
-def else []
-def head [ drop swap uncons ]
+def head [ dip [drop] uncons ]
 def tail [ drop uncons ]
 def null [ = [] ]
-def *null [ = [] dup ]
+def *null [ = [] ]
 def peek [ dup ]
-def ifNull [ or and null ]
-def if [ or and ]
+def ifte [ or dip [and] swap ]
+
+def test [ or "ERROR" = apply ]
+
+-- map [fun] [list]
+
+

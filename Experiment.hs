@@ -130,12 +130,12 @@ fnNot  (Bool False:st) = Bool True:st
 fnNot  (e:st) = Bool False:st
 
 fnOr :: Stack -> Stack
-fnOr (x:y:st) = case truthValueOf x of
+fnOr (y:x:st) = case truthValueOf x of
     True  -> x:st
     False -> y:st
         
 fnAnd :: Stack -> Stack
-fnAnd (x:y:st) = case truthValueOf x of
+fnAnd (y:x:st) = case truthValueOf x of
     False -> x:st
     True  -> y:st
 

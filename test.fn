@@ -1,31 +1,18 @@
-and *null [1 2 3]
+test [ 1 ] 1
+test [ True ] True
+test [ head [1 2 3] ]  1
+test [ sq 5 ] 25
+test [ and "ok" True ] "ok"
+test [ or "ok" False ] "ok"
+test [ ifte "ok" "fail" True ] "ok"
 
-*null [1 2 3]
-
-ifNull [] "a" "b"
-ifNull [1] "c" "d"
-dip [+] [] 1 2
-map [+ 1] [1 2 3]
-map [inc] [4 5 6]
-
-def inc [+ 1]
-
--- sum [1 2 3]
+sum 0 [1 2 3]
 
 
-def sum [ sum + dip [uncons] ]
-
-
-
-
-
-
--- map quote list  ( q es -> es )
---def map [
-    --cons          -- e' -> es''
-    --dip [
-        --apply         -- q e -> e'
-        --dip [uncons]  -- es -> e es'
-    --]
-    --dup 
---]
+def sum [
+    ifte
+        [ drop ]
+        [ sum + rot uncons ] 
+    *null swap
+]
+def sq [ * dup ]

@@ -213,6 +213,17 @@ primDig (l, Num n:Quot q:st) = (l', es ++ st')
         es = take n st
         (l', st') = primApply (l, Quot q:(drop n st))
 
+primBury :: State -> State
+primBury (l, Num n:e:st) = (l, es ++ st')
+    where
+        (es, st') = splitAt n st
+
+primExhume :: State -> State
+primExhume (l, Num n:st) = (l, e:st')
+    where
+        (xs, e:ys) = splitAt n st
+        st' = xs ++ ys
+
 primApply :: State -> State
 primApply (l, Fun f:st)     = descend $ f (l, st)
 primApply (l, Quot es:st)   = descend (l, es ++ st)
@@ -259,7 +270,7 @@ prims = (map makeDefn progFunctions) ++ [
     Defn "/" [Fun $ numericBinaryPrim div],
     Defn "%" [Fun $ numericBinaryPrim mod],
 
-    Defn "error!" [ Fun primError ],
+    Defn "croak" [ Fun primError ],
 
     Defn "def" [Fun primDef] ]
 

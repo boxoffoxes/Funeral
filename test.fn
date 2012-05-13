@@ -9,3 +9,4 @@ test "8:" [ ifte "then" "else" False ] "else"
 test "9:" [ foldr [+] 0 [1 2 3 4 5] ] 15
 test "10:" [ append "world" "hello " ] "hello world"
 test "11:" [ concat ["a" "b" "c" "d" "e" "f"] ] "abcdef"
+

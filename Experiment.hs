@@ -13,10 +13,10 @@ data Expr = Word Id
           | Quot [Expr]
           | Bool Bool
           | Pair Expr Expr
-          -- | Str String
           | Chr Char
           | Num Int
-          | Fun (State -> State)
+          | Fun (Prog -> Prog)
+          | Def Id [Expr]
           | Comm String
 
 instance Eq Expr where
@@ -26,7 +26,8 @@ instance Eq Expr where
     Chr  c == Chr  d    =    c == d
     Quot es == Quot xs  =    es == xs
     Pair e f == Pair x y =   e == x && x == y
-    Fun  _ == Fun _     =    error "Cannot compare functions"
+    Fun _ == Fun _      =    error "Cannot compare functions"
+    Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
     
 
@@ -43,19 +44,12 @@ instance Show Expr where
             typeIsChar (Chr _) = True
             typeIsChar _       = False
     show (Fun _) = "<function>"
+    show (Def id es) = ""
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
 
-data Defn = Defn {
-        name :: Id,
-        body :: [Expr]
-    } deriving Show
-
-
 type Id = String
-type Library = [ Defn ]
 type Prog = [ Expr ]
-type State = (Library, Prog)
 
 
 digit :: Parser Char
@@ -172,12 +166,80 @@ fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
 
 -- fnFoldr (Quot fn:e:Quot es:st) = 
 
+-- Prog -> Prog functions
+
+fnDef :: Prog -> Prog
+fnDef (Word id:Quot es:st) = (Def id es:st)
+
+fnDip :: Prog -> Prog
+fnDip (Quot q : e : st ) = (e:st')
+    where
+        (st') = fnApply (Quot q:st)
+
+fnDig :: Prog -> Prog
+fnDig (Num n:Quot q:st) = (es ++ st')
+    where
+        es = take n st
+        (st') = fnApply (Quot q:(drop n st))
+
+fnBury :: Prog -> Prog
+fnBury (Num n:e:st) = es ++ (e:st')
+    where
+        (es, st') = splitAt n st
+
+fnExhume :: Prog -> Prog
+fnExhume (Num n:st) = (e:st')
+    where
+        (xs, e:ys) = splitAt n st
+        st' = xs ++ ys
+
+fnApply :: Prog -> Prog
+fnApply (Fun f:st)     = descend $ f (st)
+fnApply (Quot es:st)   = descend (es ++ st)
+fnApply (e:st)         = barf st $ "Don't know how to apply " ++ show e
+
+fnEval :: Prog -> Prog
+fnEval []           = []
+fnEval (Word w:st)  = case find (getDef w) st of
+                          Nothing         -> (Word w:st)
+                          Just (Def _ es) -> descend (es ++ st)
+    where
+        getDef w (Def id _) = id == w
+        getDef w _ = False
+fnEval t@(Fun f:st) = fnApply t
+fnEval (Comm _:st)  = (st)
+fnEval (e:st)       = (e:st)
+ 
+fnError :: Prog -> Prog
+fnError (msg:st) = barf st (show msg)
+
+-- utility functions
+
+descend :: Prog -> Prog
+descend [] = []
+descend (e:st) = fnEval (e:st')
+    where
+        st' = descend (st)
+
+numericBinaryPrim :: (Int -> Int -> Int) -> Prog -> Prog
+numericBinaryPrim f (Num x  : Num y  : st') = (Num  (f x y) : st')
+numericBinaryPrim f st = Fun (numericBinaryPrim f):st
+
+makeDef :: (String, Prog -> Prog) -> Expr
+makeDef (id, f) = Def id [Fun f]
+
+
+---------------------------------------------------------------------
+-- Primitive definitions
+---------------------------------------------------------------------
 progFunctions = [
     ( "drop", \(e:st) -> st ),
-    ( "swap", \(e:f:st) -> f:e:st ),
-    ( "rot",  \(e:f:g:st) -> g:e:f:st ),
-    ( "unrot",  \(e:f:g:st) -> f:g:e:st ),
+    -- ( "swap", \(e:f:st) -> f:e:st ),
+    -- ( "rot",  \(e:f:g:st) -> g:e:f:st ),
+    -- ( "unrot",  \(e:f:g:st) -> f:g:e:st ),
     ( "dup",  \(e:st) -> e:e:st ),
+    ( "bury", fnBury ),
+    ( "exhume", fnExhume ),
 
     ( "=",    \(e:f:st) -> Bool (e == f):st ),
     ( "not",  fnNot ),
@@ -185,7 +247,6 @@ progFunctions = [
     ( "and",  fnAnd ),
 
     ( "quote",   \(e:st) -> Quot [e]:st ),
-    ( "compose", \(Fun f:Fun g:st) -> Fun (f . g):st ),
     ( "cons",    \(e:Quot es:st) -> Quot (e:es):st ),
     ( "uncons",  \(Quot (e:es):st) -> e:Quot es:st ),
     ( "splitAt", fnSplitAt ),
@@ -193,86 +254,23 @@ progFunctions = [
     ( "append",  \(Quot b:Quot a:st) -> Quot (a ++ b):st ),
 
     ( "show",    \(e:st) -> (strToQuote $ show e):st ),
-    ( "type",    fnType ) ]
+    ( "type",    fnType ),
 
--- State -> State functions
+    ("dip", fnDip),
+    ("dig", fnDig),
+    ("apply", fnApply),
 
-primDef :: State -> State
-primDef (l, Word id:Quot es:st') = (l', st')
-    where
-        l' = (Defn id es) : l
+    ("+", numericBinaryPrim (+)),
+    ("-", numericBinaryPrim (-)),
+    ("*", numericBinaryPrim (*)),
+    ("/", numericBinaryPrim div),
+    ("%", numericBinaryPrim mod),
 
-primDip :: State -> State
-primDip (l, Quot q : e : st ) = (l', e:st')
-    where
-        (l', st') = primApply (l, Quot q:st)
+    ("croak",  fnError ),
 
-primDig :: State -> State
-primDig (l, Num n:Quot q:st) = (l', es ++ st')
-    where
-        es = take n st
-        (l', st') = primApply (l, Quot q:(drop n st))
+    ("def", fnDef ) ]
 
-primBury :: State -> State
-primBury (l, Num n:e:st) = (l, es ++ st')
-    where
-        (es, st') = splitAt n st
-
-primExhume :: State -> State
-primExhume (l, Num n:st) = (l, e:st')
-    where
-        (xs, e:ys) = splitAt n st
-        st' = xs ++ ys
-
-primApply :: State -> State
-primApply (l, Fun f:st)     = descend $ f (l, st)
-primApply (l, Quot es:st)   = descend (l, es ++ st)
-primApply (_, e:st)         = barf st $ "Don't know how to apply " ++ show e
-
-primEval :: State -> State -- do this depth-first!
-primEval (l, [])         = (l, [])
-primEval (l, Word w:st)  = case find (\(Defn id f) -> id == w) l of
-                                Nothing -> (l, Word w:st)
-                                Just d  -> descend (l, (body d) ++ st)
-primEval t@(l, Fun f:st) = primApply t -- f (l, st)
-primEval (l, Comm _:st)  = (l, st)
-primEval (l, e:st)       = (l, e:st)
- 
-primError :: State -> State
-primError (l, msg:st) = barf st (show msg)
-
-descend :: State -> State
-descend (l, []) = (l, [])
-descend (l, e:st) = primEval (l', e:st')
-    where
-        (l', st') = descend (l, st)
-
-numericBinaryPrim :: (Int -> Int -> Int) -> State -> State
-numericBinaryPrim f (l, (Num x  : Num y  : st')) = (l, Num  (f x y) : st')
-numericBinaryPrim f (l, st) = (l, Fun (numericBinaryPrim f):st)
-
--- wrapper for functions that don't manipulate the library
-
-makeStateful :: (Prog -> Prog) -> State -> State
-makeStateful f (l, st) = (l, f st)
-
-makeDefn :: (String, Prog -> Prog) -> Defn
-makeDefn (id, f) = Defn id [Fun $ makeStateful f]
-
-prims = (map makeDefn progFunctions) ++ [
-    Defn "dip" [Fun primDip],
-    Defn "dig" [Fun primDig],
-    Defn "apply" [Fun primApply],
-
-    Defn "+" [Fun $ numericBinaryPrim (+)],
-    Defn "-" [Fun $ numericBinaryPrim (-)],
-    Defn "*" [Fun $ numericBinaryPrim (*)],
-    Defn "/" [Fun $ numericBinaryPrim div],
-    Defn "%" [Fun $ numericBinaryPrim mod],
-
-    Defn "croak" [ Fun primError ],
-
-    Defn "def" [Fun primDef] ]
+prims = map makeDef progFunctions
 
 
 
@@ -285,14 +283,13 @@ barf :: Prog -> String -> a
 barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
 
 showAst :: Prog -> String
-showAst st = ( take 100 $ show $ Quot st ) ++ ( if length st > 100 then "..." else "" )
+showAst st = ( take 150 $ show $ Quot st ) ++ ( if length st > 150 then "..." else "" )
 
 
 main :: IO ()
 main = do
     args <- getArgs
     sources <- mapM readFile (args ++ ["headstone.fn"])
-    let prog = parse $ concat sources --args
-    let lib = prims
-    putStrLn $ show $ snd $ descend (lib, trace (showAst prog) prog)
+    let prog = ( parse $ concat sources ) ++ prims
+    putStrLn $ show $ descend $ trace (showAst prog) prog
 

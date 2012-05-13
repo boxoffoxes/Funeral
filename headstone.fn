@@ -22,4 +22,6 @@ def doif [ apply ifte ]
 def ifte [ or dip [and] swap ]
 def dup2 [ [dip dup] dup ]
 
-
+def swap [ exhume 1 ]
+def rot  [ exhume 2 ]
+def unrot [ bury 2 ]

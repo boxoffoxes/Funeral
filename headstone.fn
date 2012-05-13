@@ -1,6 +1,7 @@
-def head [ dip [drop] uncons ]
+-- vim:filetype=funeral
+def head [ dip 'drop uncons ]
 def tail [ drop uncons ]
-def *apply [ dip [apply] dup ]
+def *apply [ dip 'apply dup ]
 def *null [ null dup ]
 
 def test [ dip [ ifte "ok" "failed" = apply ] ]
@@ -9,17 +10,20 @@ def concat [
     foldr [append swap] []
 ]
 
+def map [
+    foldr []
+]
 
 -- foldr [fun] start [list]
 def foldr [
     doif
-        [ dip [ drop ] drop ] -- cleanup
-        [ foldr *apply dig 2 [ uncons ] ]
-    dip [unrot] *null rot
+        [ dip 'drop drop ] -- cleanup
+        [ foldr *apply dig 2 'uncons ]
+    dip 'unrot *null rot
 ]
 
 def doif [ apply ifte ]
-def ifte [ or dip [and] swap ]
+def ifte [ or dip 'and swap ]
 def dup2 [ [dip dup] dup ]
 
 def swap [ exhume 1 ]

@@ -1,4 +1,4 @@
-module Author.ParseLib where
+module Funeral.ParseLib where
 
 import Data.Char
 
@@ -86,7 +86,18 @@ spaces = atLeastOne space
 optSpaces :: Parser String
 optSpaces = maybeSome space
 
+escape :: Parser Char
+escape = char '\\' |> anyChar
+    where
+        escapes = [ ('n', '\n'), ('r', '\r'), ('\\', '\\'), ('t', '\t'), ('"', '\"'), ('0', '\0') ]
 
+-- stringQuotedString :: String -> String -> Parser String
+-- stringQuotedString op cl = string op |> stringBody <| string cl
+
+charQuotedString :: Char -> Parser String
+charQuotedString c = char c |> maybeSome stringChar <| char c
+    where
+        stringChar = escape <|> anyCharExcept (c:"\\")
 
 -- token :: Parser a -> Parser a
 -- token p = p <| optSpaces -- TODO: extend this to preserve leading spaces?

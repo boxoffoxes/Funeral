@@ -7,12 +7,12 @@ import List (nubBy, partition, intersperse, find)
 
 import Debug.Trace
 
-import Author.ParseLib
+import Funeral.ParseLib
 
 data Expr = Word Id
           | Quot [Expr]
           | Bool Bool
-          | Pair Expr Expr
+          -- | Pair Expr Expr
           | Chr Char
           | Num Int
           | Fun (Prog -> Prog)
@@ -25,7 +25,7 @@ instance Eq Expr where
     Bool b == Bool c    =    b == c
     Chr  c == Chr  d    =    c == d
     Quot es == Quot xs  =    es == xs
-    Pair e f == Pair x y =   e == x && x == y
+    -- Pair e f == Pair x y =   e == x && x == y
     Fun _ == Fun _      =    error "Cannot compare functions"
     Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
@@ -35,7 +35,7 @@ instance Show Expr where
     show (Word id) = id
     show (Num n) = show n
     show (Bool b) = '?' : show b
-    show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
+    -- show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
     show (Quot es) = case all typeIsChar es of
             True  -> "\"" ++ ( map (\(Chr c) -> c) es ) ++ "\""
@@ -80,7 +80,7 @@ parseString = pure strToQuote <*> s
     where 
         s =  token ( char '`'  |> maybeSome ( satisfy (/= '`')  ) <| char '`' )
          <|> token ( char '"'  |> maybeSome ( satisfy (/= '"')  ) <| char '"' )
-         <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
+--         <|> token ( char '\'' |> maybeSome ( satisfy (/= '\'') ) <| char '\'' )
 
 parseNumber :: Parser Expr
 parseNumber = pure Num <*> n
@@ -90,14 +90,14 @@ parseNumber = pure Num <*> n
 parseComment :: Parser Expr
 parseComment = token $ pure Comm <*> keyword "--" |> ( maybeSome $ anyCharExcept "\n\r" ) <| ( maybeSome $ satisfy (`elem` "\n\r") )
 
-parsePair :: Parser Expr
-parsePair = pure Pair <*> keyword "(" |> parseExpr <*> parseExpr <| keyword ")"
+-- parsePair :: Parser Expr
+-- parsePair = pure Pair <*> keyword "(" |> parseExpr <*> parseExpr <| keyword ")"
 
 parseId :: Parser String
 parseId = token $ pure (:) <*> anyCharExcept reservedPrefixes <*> ( maybeSome $ anyCharExcept reservedChars )
     where
-        reservedPrefixes = ".0123456789" ++ reservedChars
-        reservedChars = " \t\n\r\0[]\"'`()"
+        reservedPrefixes = "'.0123456789" ++ reservedChars
+        reservedChars = " \t\n\r\0[]\"`()"
 
 parseBool :: Parser Expr
 parseBool = pure Bool <*> ( pure read <*> ( keyword "True" <|> keyword "False" ) )
@@ -106,10 +106,13 @@ parseWord :: Parser Expr
 parseWord = pure Word <*> parseId
 
 parseQuot :: Parser Expr
-parseQuot = token $ pure Quot <*> keyword "[" |> maybeSome parseExpr <| keyword "]"
+parseQuot = token $ pure Quot <*> quo
+    where
+        quo = keyword "[" |> maybeSome parseExpr <| keyword "]"
+          <|> char '\'' |> exactlyOne parseExpr
 
 parseExpr :: Parser Expr
-parseExpr = parseComment <|> parseBool <|> parseChar <|> parseNumber <|> parseQuot <|> parsePair <|> parseString <|> parseWord
+parseExpr = parseComment <|> parseBool <|> parseChar <|> parseNumber <|> parseQuot {- <|> parsePair -} <|> parseString <|> parseWord
 
 parse :: String -> [Expr]
 parse s = case junk of
@@ -154,7 +157,7 @@ fnType st@(Bool _:_)   = strToQuote "boolean":st
 fnType st@(Chr _:_)    = strToQuote "character":st
 fnType st@(Fun _:_)    = strToQuote "function":st
 fnType st@(Num _:_)    = strToQuote "number":st
-fnType st@(Pair _ _:_) = strToQuote "number":st
+-- fnType st@(Pair _ _:_) = strToQuote "number":st
 
 -- fnPutChar :: Prog -> Prog
 -- fnPutChar (Chr c:st) = st
@@ -169,7 +172,9 @@ fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
 -- Prog -> Prog functions
 
 fnDef :: Prog -> Prog
-fnDef (Word id:Quot es:st) = (Def id es:st)
+fnDef (Word id:Quot es:st)        = Def id es:st
+-- fnDef (Quot [Word id]:Quot es:st) = Def id es:st -- Need to pre-process and sub-in 
+-- fnDef (Fun _:st) = barf st "Attempted to redefine a word. If you meant to do this, quote the word."
 
 fnDip :: Prog -> Prog
 fnDip (Quot q : e : st ) = (e:st')

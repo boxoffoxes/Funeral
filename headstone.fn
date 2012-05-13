@@ -1,12 +1,25 @@
 def head [ dip [drop] uncons ]
 def tail [ drop uncons ]
-def null [ = [] ]
-def *null [ = [] ]
-def peek [ dup ]
+def *apply [ dip [apply] dup ]
+def *null [ null dup ]
+
+def test [ dip [ ifte "ok" "failed" = apply ] ]
+
+def concat [
+    foldr [append swap] []
+]
+
+
+-- foldr [fun] start [list]
+def foldr [
+    doif
+        [ dip [ drop ] drop ] -- cleanup
+        [ foldr *apply dig 2 [ uncons ] ]
+    dip [unrot] *null rot
+]
+
+def doif [ apply ifte ]
 def ifte [ or dip [and] swap ]
-
-def test [ or "ERROR" = apply ]
-
--- map [fun] [list]
+def dup2 [ [dip dup] dup ]
 
 

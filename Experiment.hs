@@ -36,7 +36,12 @@ instance Show Expr where
     show (Bool b) = '?' : show b
     show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
-    show (Quot es) = "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
+    show (Quot es) = case all typeIsChar es of
+            True  -> "\"" ++ ( map (\(Chr c) -> c) es ) ++ "\""
+            False -> "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
+        where
+            typeIsChar (Chr _) = True
+            typeIsChar _       = False
     show (Fun _) = "<function>"
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
@@ -49,8 +54,8 @@ data Defn = Defn {
 
 type Id = String
 type Library = [ Defn ]
-type Stack = [ Expr ]
-type State = (Library, Stack)
+type Prog = [ Expr ]
+type State = (Library, Prog)
 
 
 digit :: Parser Char
@@ -123,31 +128,32 @@ parse s = case junk of
 -- Primitive functions
 ---------------------------------------------------------------------
 
--- Stack -> Stack
+-- Prog -> Prog
 
-fnNot :: Stack -> Stack
+fnNot :: Prog -> Prog
 fnNot  (Bool False:st) = Bool True:st
 fnNot  (e:st) = Bool False:st
 
-fnOr :: Stack -> Stack
+fnOr :: Prog -> Prog
 fnOr (y:x:st) = case truthValueOf x of
     True  -> x:st
     False -> y:st
         
-fnAnd :: Stack -> Stack
+fnAnd :: Prog -> Prog
 fnAnd (y:x:st) = case truthValueOf x of
     False -> x:st
     True  -> y:st
 
-fnNull :: Stack -> Stack
+fnNull :: Prog -> Prog
 fnNull (Quot []:st) = Bool True:st
-fnNull (e:st) = Bool False:st
+fnNull (Quot q:st)  = Bool False:st
+fnNull (e:st) = barf st ("Cannot determine if non-quote value '" ++ show e ++ "' is null.")
 
 truthValueOf :: Expr -> Bool
 truthValueOf (Bool False) = False
 truthValueOf e = True
 
-fnType :: Stack -> Stack
+fnType :: Prog -> Prog
 fnType st@(Quot _:_)   = strToQuote "quotation":st
 fnType st@(Word _:_)   = strToQuote "word":st
 fnType st@(Bool _:_)   = strToQuote "boolean":st
@@ -156,8 +162,9 @@ fnType st@(Fun _:_)    = strToQuote "function":st
 fnType st@(Num _:_)    = strToQuote "number":st
 fnType st@(Pair _ _:_) = strToQuote "number":st
 
--- fnPutChar :: Stack -> Stack
+-- fnPutChar :: Prog -> Prog
 -- fnPutChar (Chr c:st) = st
+
 
 fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
     where
@@ -165,10 +172,11 @@ fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
 
 -- fnFoldr (Quot fn:e:Quot es:st) = 
 
-stackFunctions = [
+progFunctions = [
     ( "drop", \(e:st) -> st ),
     ( "swap", \(e:f:st) -> f:e:st ),
     ( "rot",  \(e:f:g:st) -> g:e:f:st ),
+    ( "unrot",  \(e:f:g:st) -> f:g:e:st ),
     ( "dup",  \(e:st) -> e:e:st ),
 
     ( "=",    \(e:f:st) -> Bool (e == f):st ),
@@ -181,7 +189,10 @@ stackFunctions = [
     ( "cons",    \(e:Quot es:st) -> Quot (e:es):st ),
     ( "uncons",  \(Quot (e:es):st) -> e:Quot es:st ),
     ( "splitAt", fnSplitAt ),
+    ( "null",    fnNull ),
+    ( "append",  \(Quot b:Quot a:st) -> Quot (a ++ b):st ),
 
+    ( "show",    \(e:st) -> (strToQuote $ show e):st ),
     ( "type",    fnType ) ]
 
 -- State -> State functions
@@ -192,15 +203,20 @@ primDef (l, Word id:Quot es:st') = (l', st')
         l' = (Defn id es) : l
 
 primDip :: State -> State
-primDip (l, Quot q : e : es ) = (l', e:es')
+primDip (l, Quot q : e : st ) = (l', e:st')
     where
-        (l', es') = primApply (l, Quot q:es)
+        (l', st') = primApply (l, Quot q:st)
+
+primDig :: State -> State
+primDig (l, Num n:Quot q:st) = (l', es ++ st')
+    where
+        es = take n st
+        (l', st') = primApply (l, Quot q:(drop n st))
 
 primApply :: State -> State
 primApply (l, Fun f:st)     = descend $ f (l, st)
 primApply (l, Quot es:st)   = descend (l, es ++ st)
-primApply (_, e:st)         = error $ "Don't know how to apply " ++ show e
--- primApply (l, st)           = descend (l, st)
+primApply (_, e:st)         = barf st $ "Don't know how to apply " ++ show e
 
 primEval :: State -> State -- do this depth-first!
 primEval (l, [])         = (l, [])
@@ -210,6 +226,9 @@ primEval (l, Word w:st)  = case find (\(Defn id f) -> id == w) l of
 primEval t@(l, Fun f:st) = primApply t -- f (l, st)
 primEval (l, Comm _:st)  = (l, st)
 primEval (l, e:st)       = (l, e:st)
+ 
+primError :: State -> State
+primError (l, msg:st) = barf st (show msg)
 
 descend :: State -> State
 descend (l, []) = (l, [])
@@ -223,20 +242,24 @@ numericBinaryPrim f (l, st) = (l, Fun (numericBinaryPrim f):st)
 
 -- wrapper for functions that don't manipulate the library
 
-makeStateful :: (Stack -> Stack) -> State -> State
+makeStateful :: (Prog -> Prog) -> State -> State
 makeStateful f (l, st) = (l, f st)
 
-makeDefn :: (String, Stack -> Stack) -> Defn
+makeDefn :: (String, Prog -> Prog) -> Defn
 makeDefn (id, f) = Defn id [Fun $ makeStateful f]
 
-prims = (map makeDefn stackFunctions) ++ [
+prims = (map makeDefn progFunctions) ++ [
     Defn "dip" [Fun primDip],
+    Defn "dig" [Fun primDig],
+    Defn "apply" [Fun primApply],
 
     Defn "+" [Fun $ numericBinaryPrim (+)],
     Defn "-" [Fun $ numericBinaryPrim (-)],
     Defn "*" [Fun $ numericBinaryPrim (*)],
     Defn "/" [Fun $ numericBinaryPrim div],
     Defn "%" [Fun $ numericBinaryPrim mod],
+
+    Defn "error!" [ Fun primError ],
 
     Defn "def" [Fun primDef] ]
 
@@ -247,11 +270,18 @@ prims = (map makeDefn stackFunctions) ++ [
 -- Argument processing and main
 ---------------------------------------------------------------------
 
+barf :: Prog -> String -> a
+barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
+
+showAst :: Prog -> String
+showAst st = ( take 100 $ show $ Quot st ) ++ ( if length st > 100 then "..." else "" )
+
+
 main :: IO ()
 main = do
     args <- getArgs
     sources <- mapM readFile (args ++ ["headstone.fn"])
-    let stack = parse $ concat sources --args
+    let prog = parse $ concat sources --args
     let lib = prims
-    putStrLn $ show $ descend (lib, trace (show stack) stack)
+    putStrLn $ show $ snd $ descend (lib, trace (showAst prog) prog)
 

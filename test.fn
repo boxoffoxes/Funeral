@@ -1,18 +1,11 @@
-test [ 1 ] 1
-test [ True ] True
-test [ head [1 2 3] ]  1
-test [ sq 5 ] 25
-test [ and "ok" True ] "ok"
-test [ or "ok" False ] "ok"
-test [ ifte "ok" "fail" True ] "ok"
-
-sum 0 [1 2 3]
-
-
-def sum [
-    ifte
-        [ drop ]
-        [ sum + rot uncons ] 
-    *null swap
-]
-def sq [ * dup ]
+test "1:" [ 1 ] 1
+test "2:" [ True ] True
+test "3:" [ head [1 2 3] ]  1
+test "4:" [ * dup 5 ] 25
+test "5:" [ and "ok" True ] "ok"
+test "6:" [ or "ok" False ] "ok"
+test "7:" [ ifte "then" "else" True ] "then"
+test "8:" [ ifte "then" "else" False ] "else"
+test "9:" [ foldr [+] 0 [1 2 3 4 5] ] 15
+test "10:" [ append "world" "hello " ] "hello world"
+test "11:" [ concat ["a" "b" "c" "d" "e" "f"] ] "abcdef"

@@ -29,6 +29,17 @@ instance Eq Expr where
     Fun _ == Fun _      =    error "Cannot compare functions"
     Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
+
+instance Ord Expr where
+    Word w <= Word x    =    w <= x
+    Num  n <= Num  m    =    n <= m
+    Bool b <= Bool c    =    b <= c
+    Chr  c <= Chr  d    =    c <= d
+    Quot es <= Quot xs  =    es <= xs
+    -- Pair e f == Pair x y =   e == x && x == y
+    Fun _ <= Fun _      =    error "Cannot compare functions"
+    Def _ _ <= Def _ _  =    error "Cannot compare definitions"
+    _      <= _         =    error "Cannot compare values of differing types"
     
 
 instance Show Expr where
@@ -157,6 +168,7 @@ fnType st@(Bool _:_)   = strToQuote "boolean":st
 fnType st@(Chr _:_)    = strToQuote "character":st
 fnType st@(Fun _:_)    = strToQuote "function":st
 fnType st@(Num _:_)    = strToQuote "number":st
+fnType st@(Def _ _:_)  = strToQuote "definition":st
 -- fnType st@(Pair _ _:_) = strToQuote "number":st
 
 -- fnPutChar :: Prog -> Prog
@@ -174,7 +186,9 @@ fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
 fnDef :: Prog -> Prog
 fnDef (Word id:Quot es:st)        = Def id es:st
 -- fnDef (Quot [Word id]:Quot es:st) = Def id es:st -- Need to pre-process and sub-in 
--- fnDef (Fun _:st) = barf st "Attempted to redefine a word. If you meant to do this, quote the word."
+fnDef (Word id:e:st)  = barf st "Definitions must be quoted"
+fnDef (Fun _:st) = barf st "Attempted to redefine a word."
+fnDef (e:st) = barf st $ "Can't define " ++ show e
 
 fnDip :: Prog -> Prog
 fnDip (Quot q : e : st ) = (e:st')
@@ -246,7 +260,13 @@ progFunctions = [
     ( "bury", fnBury ),
     ( "exhume", fnExhume ),
 
-    ( "=",    \(e:f:st) -> Bool (e == f):st ),
+    ( "=",    \(f:e:st) -> Bool (e == f):st ),
+    ( "!=",   \(f:e:st) -> Bool (e /= f):st ),
+    ( ">",    \(f:e:st) -> Bool (e > f):st ),
+    ( "<",    \(f:e:st) -> Bool (e < f):st ),
+    ( ">=",   \(f:e:st) -> Bool (e >= f):st ),
+    ( "<=",   \(f:e:st) -> Bool (e <= f):st ),
+
     ( "not",  fnNot ),
     ( "or",   fnOr ),
     ( "and",  fnAnd ),

@@ -6,26 +6,68 @@ def *null [ null dup ]
 
 def test [ dip [ ifte "ok" "failed" = apply ] ]
 
-def concat [
-    foldr [append swap] []
+def concat [ fold [append swap] [] ]
+
+def *map [ map dip 'dup ]
+def map [ -- 'f [list]
+    fold  -- result: fold [ cons f swap ] []
+	append 'swap
+	append exhume 2  -- recover 'f
+	'cons
+	[]
+	dip 'reverse
 ]
 
-def map [
-    foldr []
+
+TEST [ cons dip 'cons partition [ = 0 % 2 ] [1 2 3 4] [] ]
+	 [ [2 4] [1 3] ]  "partition"
+
+def partition [ -- 'f [list]
+	doif
+		[ drop dig 3 'drop ]
+		[
+			doif
+				[ dip   [cons exhume 2] ] -- 'f [t] [] [sil]
+				[ dig 2 [cons swap]     ] -- 'f [] [t] [sil]
+			swap *apply         		  -- b 'f [] [] t [sil]
+			dip   [exhume 2]    		  -- 'f t [] [] t [sil]
+			dig 3 [dup uncons]  		  -- 'f [] [] t t [sil]
+		]
+	dig 3 '*null
+	dip [ [] [] reverse ] 				  -- 'f [] [] [tsil]
 ]
 
--- foldr [fun] start [list]
-def foldr [
+
+def reverse [ fold '[cons swap] [] ]
+
+-- fold [fun] start [list]
+def fold [
     doif
         [ dip 'drop drop ] -- cleanup
-        [ foldr *apply dig 2 'uncons ]
+        [ fold *apply dig 2 'uncons ]
     dip 'unrot *null rot
 ]
 
-def doif [ apply ifte ]
-def ifte [ or dip 'and swap ]
-def dup2 [ [dip dup] dup ]
-
+def dup2 [ dup [dip dup] ]
 def swap [ exhume 1 ]
 def rot  [ exhume 2 ]
 def unrot [ bury 2 ]
+
+TEST [ times 3 [+ 1] 0 ]  3  "times"
+TEST [ ifte "then" "else" True ]  "then"  "ifte: True -> then"
+TEST [ ifte "then" "else" False ] "else"  "ifte: False -> else"
+TEST [ defined def ] True   "defined: True"
+TEST [ defined xyz ] False  "defined: False"
+
+doif
+	[ def TEST [ append ifte "ok" "Failed: " = apply ] ]
+	[ def TEST [ times 3 drop ] ]
+defined RUN_TESTS
+
+-- n [fun] // Do [fun] n times.
+def times [ doif [ - 1 dip '*apply ] [ drop ] > 0 ]
+
+def doif [ apply ifte ]
+def ifte [ or dip 'and swap ]
+def defined [ != "word" type ]
+def RUN_TESTS []

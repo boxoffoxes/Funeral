@@ -1,4 +1,3 @@
--- vim:filetype=funeral
 def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
 def html		[ newTag [ xmlns="http://www.w3.org/1999/xhtml" ; "html" ] ]
@@ -83,3 +82,31 @@ def tr			[ newTag "tr" ]
 def tt			[ newTag "tt" ]
 def ul			[ newTag "ul" ]
 def var			[ newTag "var" ]
+
+-- General HTML generation...
+
+TEST [ renderOpenTag "x"  ]   "<x"    "renderOpenTag"
+TEST [ renderAttrs [[a "b"] [c "d"]] ] `a="b" c="d">` "renderAttrs: several"
+TEST [ renderAttrs '[a "b"] ] `a="b">` "renderAttrs: one"
+TEST [ renderAttrs []     ]   ">"     "renderAttrs: none"
+TEST [ renderAttr [a "b"] ]   `a="b"` "renderAttr"
+TEST [ renderCloseTag "x" ]   "</x>"  "close-tag"
+
+def newTag [ -- id args
+	times 4 'append
+	renderOpenTag
+	bury 2 ">"
+	bury 3 renderCloseTag dup
+	dip 'renderAttrs
+	dig 2 'renderContent
+	dip [ partition [ = "quotation" type ] ]
+]
+def renderOpenTag  [ append "<" ]
+def renderAttrs    [ concat map 'renderAttr ]
+def renderAttr [
+	times 2 'append swap "=" dip [ show uncons ] show uncons
+]
+def renderCloseTag [ times 2 'append "<" swap ">"]
+
+
+-- vim:filetype=funeral

@@ -85,15 +85,17 @@ def var			[ newTag "var" ]
 
 -- General HTML generation...
 
+TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
+TEST [ newTag "html" [] ]   "<html></html>"  "newTag"
 TEST [ renderOpenTag "x"  ]   "<x"    "renderOpenTag"
-TEST [ renderAttrs [[a "b"] [c "d"]] ] `a="b" c="d">` "renderAttrs: several"
-TEST [ renderAttrs '[a "b"] ] `a="b">` "renderAttrs: one"
-TEST [ renderAttrs []     ]   ">"     "renderAttrs: none"
-TEST [ renderAttr [a "b"] ]   `a="b"` "renderAttr"
-TEST [ renderCloseTag "x" ]   "</x>"  "close-tag"
+TEST [ renderAttrs [[a "b"] [c "d"]] ] ` a="b" c="d"` "renderAttrs: several"
+TEST [ renderAttrs '[a "b"] ] ` a="b"` "renderAttrs: one"
+TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
+TEST [ renderAttr [a "b"] ]   ` a="b"` "renderAttr"
+TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 
 def newTag [ -- id args
-	times 4 'append
+	times 4 'prepend
 	renderOpenTag
 	bury 2 ">"
 	bury 3 renderCloseTag dup
@@ -101,12 +103,16 @@ def newTag [ -- id args
 	dig 2 'renderContent
 	dip [ partition [ = "quotation" type ] ]
 ]
-def renderOpenTag  [ append "<" ]
+def renderContent []
+def renderOpenTag  [ prepend "<" ]
 def renderAttrs    [ concat map 'renderAttr ]
 def renderAttr [
-	times 2 'append swap "=" dip [ show uncons ] show uncons
+    prepend " "
+    times 2 'append -- concatenate
+    swap "=" drop  -- drop empty list and insert =
+    times 2 [swap show uncons] -- break the list key and value
 ]
-def renderCloseTag [ times 2 'append "<" swap ">"]
+def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 
 -- vim:filetype=funeral

@@ -26,9 +26,32 @@
 	-- dip [ [] [] reverse ] 				  -- 'f [] [] [tsil]
 -- ]
 
+def concat [ fold 'prepend [] ]
+
+def prepend [ append swap ]
+
+def *partition [ partition dip 'dup ]
 def partition [ -- 'pred [list]
-	-- map dip [ dup reverse ]  -- [tftf] [tsil]
-	
+	filter 
+    dig 2 [filter append swap 'not]
+    unrot dup2
+]
+
+def *filter [ filter dip 'dup ]
+def filter [ -- 'pred [list]
+    reverse drop drop
+    times swap [ 
+        doif
+            [ dig 2 'cons unrot ]
+            'drop
+        rot uncons dip 'uncons 
+    ] *length
+    unrot [] swap *map
+]
+
+def *length [length dup]
+def length [
+    fold [+ 1 dip 'drop] 0
 ]
 
 def file [ -- 'pred [dest1] [dest2] elem
@@ -51,6 +74,9 @@ def map [ -- 'f [list]
 
 def reverse [ fold [cons swap] [] ]
 
+def odd [= 1 % 2]
+def even [= 0 % 2]
+
 -- fold [fun] start [list]
 def *fold [ fold dig 2 'dup ]
 def fold [
@@ -60,7 +86,7 @@ def fold [
     dip 'unrot *null rot
 ]
 
-def dup2 [ dup [dip dup] ]
+def dup2 [ dup dip 'dup ]
 def rot  [ exhume 2 ]
 def unrot [ bury 2 ]
 def *null [ null dup ]

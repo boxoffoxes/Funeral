@@ -45,7 +45,7 @@ instance Ord Expr where
 instance Show Expr where
     show (Word id) = id
     show (Num n) = show n
-    show (Bool b) = '?' : show b
+    show (Bool b) = show b
     -- show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
     show (Quot es) = case all typeIsChar es of
@@ -178,6 +178,9 @@ fnDefined (Quot [Word w]:st) = case findDef w st of
 -- fnPutChar :: Prog -> Prog
 -- fnPutChar (Chr c:st) = st
 
+-- fnPartition (Quot pred:Quot es:st) = Quot as:Quot bs':st
+	-- where
+		-- (as, bs) = partition 
 
 fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
     where
@@ -316,8 +319,12 @@ prims = map makeDef progFunctions
 barf :: Prog -> String -> a
 barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
 
+formatExpr :: Expr -> String
+formatExpr (Def _ _) = ""
+formatExpr e = show e
+
 showAst :: Prog -> String
-showAst st = ( take 150 $ show $ Quot st ) ++ ( if length st > 150 then "..." else "" )
+showAst st = concat $ intersperse "\n" $ filter (/= "") $ map formatExpr st
 
 
 main :: IO ()
@@ -325,5 +332,5 @@ main = do
     args <- getArgs
     sources <- mapM readFile (args ++ ["headstone.fn"])
     let prog = ( parse $ concat sources ) ++ prims
-    putStrLn $ show $ descend $ trace (showAst prog) prog
+    putStrLn $ showAst $ descend $ prog
 

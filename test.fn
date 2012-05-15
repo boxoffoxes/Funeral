@@ -1,12 +1,49 @@
 -- vim:filetype=funeral
-test "1:" '1 1
-test "2:" 'True True
-test "3:" [ head [1 2 3] ]  1
-test "4:" [ * dup 5 ] 25
-test "5:" [ and "ok" True ] "ok"
-test "6:" [ or "ok" False ] "ok"
-test "7:" [ ifte "then" "else" True ] "then"
-test "8:" [ ifte "then" "else" False ] "else"
-test "9:" [ foldr '+ 0 [1 2 3 4 5] ] 15
-test "10:" [ append "world" "hello " ] "hello world"
-test "11:" [ concat ["a" "b" "c" "d" "e" "f"] ] "abcdef"
+-- test "1:" '1 1
+-- test "2:" 'True True
+-- test "3:" [ head [1 2 3] ]  1
+-- test "4:" [ * dup 5 ] 25
+-- test "5:" [ and "ok" True ] "ok"
+-- test "6:" [ or "ok" False ] "ok"
+-- test "7:" [ ifte "then" "else" True ] "then"
+-- test "8:" [ ifte "then" "else" False ] "else"
+-- test "9:" [ foldr '+ 0 [1 2 3 4 5] ] 15
+-- test "10:" [ append "world" "hello " ] "hello world"
+-- test "11:" [ concat ["a" "b" "c" "d" "e" "f"] ] "abcdef"
+
+
+-- TEST [ cons dip 'cons partition [ = 0 % 2 ] [1 2 3 4] [] ]
+--	 [ [2 4] [1 3] ]  "partition"
+TEST [ map [+ 1] [1 2 3] ] [2 3 4] "List map"
+TEST [ reverse "hello" ] "olleh"  "List reversal"
+TEST [ fold '+ 0 [ 1 2 3 4 5 ] ] 15 "Fold addition"
+
+TEST [ times 3 [+ 1] 0 ]  3  "Repeated function application"
+TEST [ ifte "then" "else" True ]  "then"  "ifte: True -> then"
+TEST [ ifte "then" "else" False ] "else"  "ifte: False -> else"
+TEST [ defined 'def  ] True   "defined"
+TEST [ defined 'duff ] False  "not defined"
+
+TEST [ cons uncons "test" ] "test" "uncons"
+TEST [ cons .t "est" ] 		"test" "cons"
+
+TEST [ % 3 10 ] 1 "modulus"
+TEST [ / 3 10 ] 3 "division"
+TEST [ * 2 3 ] 6 "multiplication"
+TEST [ - 1 2 ] 1 "subtraction"
+TEST [ + 1 2 ] 3 "addition"
+
+TEST '1 1 "This TEST should succeed" 
+TEST '1 2 "This TEST should fail"
+
+def TEST [ 
+	doif 
+		[append " :: ok" drop drop] 
+		'_REPORT_FAILURE
+	swap dip '= dup apply dip 'dup
+]
+def _REPORT_FAILURE [ -- act exp name -> msg
+	append append swap
+	append swap " :: FAILED. Expected " show swap
+	append swap ". Actual " show -- actStr exp name
+]

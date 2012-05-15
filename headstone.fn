@@ -1,44 +1,45 @@
 -- vim:filetype=funeral
-def head [ dip 'drop uncons ]
-def tail [ drop uncons ]
-def *apply [ dip 'apply dup ]
-def *null [ null dup ]
-
-def test [ dip [ ifte "ok" "failed" = apply ] ]
-
-def concat [ fold [append swap] [] ]
-
-def *map [ map dip 'dup ]
-def map [ -- 'f [list]
-    fold  -- result: fold [ cons f swap ] []
-	append 'swap
-	append exhume 2  -- recover 'f
-	'cons
-	[]
-	dip 'reverse
-]
-
-
-TEST [ cons dip 'cons partition [ = 0 % 2 ] [1 2 3 4] [] ]
-	 [ [2 4] [1 3] ]  "partition"
-
-def partition [ -- 'f [list]
-	doif
-		[ drop dig 3 'drop ]
-		[
-			doif
-				[ dip   [cons exhume 2] ] -- 'f [t] [] [sil]
-				[ dig 2 [cons swap]     ] -- 'f [] [t] [sil]
-			swap *apply         		  -- b 'f [] [] t [sil]
-			dip   [exhume 2]    		  -- 'f t [] [] t [sil]
-			dig 3 [dup uncons]  		  -- 'f [] [] t t [sil]
-		]
-	dig 3 '*null
-	dip [ [] [] reverse ] 				  -- 'f [] [] [tsil]
-]
+-- def head [ dip 'drop uncons ]
+-- def tail [ drop uncons ]
+-- 
+-- def test [ dip [ ifte "ok" "failed" = apply ] ]
+-- 
+-- def concat [ fold [append swap] [] ]
+-- 
+-- def *map [ map dip 'dup ]
+-- def map [ -- 'f [list]
+    -- fold  -- result: fold [ cons f swap ] []
+	-- append 'swap
+	-- append exhume 2  -- recover 'f
+	-- 'cons
+	-- []
+	-- dip 'reverse
+-- ]
+-- 
+-- 
+-- TEST [ cons dip 'cons partition [ = 0 % 2 ] [1 2 3 4] [] ]
+	 -- [ [2 4] [1 3] ]  "partition"
+-- 
+-- def partition [ -- 'f [list]
+	-- doif
+		-- [ drop dig 3 'drop ]
+		-- [
+			-- doif
+				-- [ dip   [cons exhume 2] ] -- 'f [t] [] [sil]
+				-- [ dig 2 [cons swap]     ] -- 'f [] [t] [sil]
+			-- swap *apply         		  -- b 'f [] [] t [sil]
+			-- dip   [exhume 2]    		  -- 'f t [] [] t [sil]
+			-- dig 3 [dup uncons]  		  -- 'f [] [] t t [sil]
+		-- ]
+	-- dig 3 '*null
+	-- dip [ [] [] reverse ] 				  -- 'f [] [] [tsil]
+-- ]
 
 
+TEST [ reverse "hello" ] "olleh"  "List reveral"
 def reverse [ fold '[cons swap] [] ]
+
+TEST [ fold '+ 0 [ 1 2 3 4 5 ] ] 15 "Fold addition"
 
 -- fold [fun] start [list]
 def fold [
@@ -49,25 +50,29 @@ def fold [
 ]
 
 def dup2 [ dup [dip dup] ]
-def swap [ exhume 1 ]
 def rot  [ exhume 2 ]
 def unrot [ bury 2 ]
+def *null [ null dup ]
 
 TEST [ times 3 [+ 1] 0 ]  3  "times"
 TEST [ ifte "then" "else" True ]  "then"  "ifte: True -> then"
 TEST [ ifte "then" "else" False ] "else"  "ifte: False -> else"
-TEST [ defined def ] True   "defined: True"
-TEST [ defined xyz ] False  "defined: False"
+TEST [ defined 'def  ] True   "defined: True"
+TEST [ defined 'duff ] False  "defined: False"
+
 
 doif
-	[ def TEST [ append ifte "ok" "Failed: " = apply ] ]
-	[ def TEST [ times 3 drop ] ]
-defined RUN_TESTS
+	[ def TEST [ append swap ifte "ok: " "Failed: " = apply ] ]
+	[ def TEST [ times 3 'drop ] ]
+defined 'RUN_TESTS
 
 -- n [fun] // Do [fun] n times.
-def times [ doif [ - 1 dip '*apply ] [ drop ] > 0 ]
+def times [
+    doif [ times - 1 dip '*apply ] [ drop drop ] > 0 dup
+]
+def *apply [ dip 'apply dup ]
 
 def doif [ apply ifte ]
 def ifte [ or dip 'and swap ]
-def defined [ != "word" type ]
+def swap [ exhume 1 ]
 def RUN_TESTS []

@@ -55,7 +55,7 @@ instance Show Expr where
             typeIsChar (Chr _) = True
             typeIsChar _       = False
     show (Fun _) = "<function>"
-    show (Def id es) = ""
+    show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
 
@@ -162,14 +162,18 @@ truthValueOf (Bool False) = False
 truthValueOf e = True
 
 fnType :: Prog -> Prog
-fnType st@(Quot _:_)   = strToQuote "quotation":st
-fnType st@(Word _:_)   = strToQuote "word":st
-fnType st@(Bool _:_)   = strToQuote "boolean":st
-fnType st@(Chr _:_)    = strToQuote "character":st
-fnType st@(Fun _:_)    = strToQuote "function":st
-fnType st@(Num _:_)    = strToQuote "number":st
-fnType st@(Def _ _:_)  = strToQuote "definition":st
--- fnType st@(Pair _ _:_) = strToQuote "number":st
+fnType (Quot [Quot _]:st)   = strToQuote "quotation":st
+fnType (Quot [Word _]:st)   = strToQuote "word":st
+fnType (Quot [Bool _]:st)   = strToQuote "boolean":st
+fnType (Quot [Chr _]:st)    = strToQuote "character":st
+fnType (Quot [Fun _]:st)    = strToQuote "function":st -- Without quotation Fun consumes its args.
+fnType (Quot [Num _]:st)    = strToQuote "number":st
+fnType (Quot [Def _ _]:st)  = strToQuote "definition":st
+fnType st = barf st "Type must be called on a quoted value."
+
+fnDefined (Quot [Word w]:st) = case findDef w st of
+    Nothing -> Bool False:st
+    Just _  -> Bool True:st
 
 -- fnPutChar :: Prog -> Prog
 -- fnPutChar (Chr c:st) = st
@@ -219,12 +223,9 @@ fnApply (e:st)         = barf st $ "Don't know how to apply " ++ show e
 
 fnEval :: Prog -> Prog
 fnEval []           = []
-fnEval (Word w:st)  = case find (getDef w) st of
+fnEval (Word w:st)  = case findDef w st of
                           Nothing         -> (Word w:st)
                           Just (Def _ es) -> descend (es ++ st)
-    where
-        getDef w (Def id _) = id == w
-        getDef w _ = False
 fnEval t@(Fun f:st) = fnApply t
 fnEval (Comm _:st)  = (st)
 fnEval (e:st)       = (e:st)
@@ -234,6 +235,12 @@ fnError (msg:st) = barf st (show msg)
 
 -- utility functions
 
+findDef :: Id -> [Expr] -> Maybe Expr
+findDef w st = find (getDef w) st 
+    where
+        getDef w (Def id _) = id == w
+        getDef w _ = False
+
 descend :: Prog -> Prog
 descend [] = []
 descend (e:st) = fnEval (e:st')
@@ -241,7 +248,7 @@ descend (e:st) = fnEval (e:st')
         st' = descend (st)
 
 numericBinaryPrim :: (Int -> Int -> Int) -> Prog -> Prog
-numericBinaryPrim f (Num x  : Num y  : st') = (Num  (f x y) : st')
+numericBinaryPrim f (Num y  : Num x  : st') = (Num  (f x y) : st')
 numericBinaryPrim f st = Fun (numericBinaryPrim f):st
 
 makeDef :: (String, Prog -> Prog) -> Expr
@@ -292,7 +299,9 @@ progFunctions = [
     ("%", numericBinaryPrim mod),
 
     ("croak",  fnError ),
-
+    
+    ("defined", fnDefined ),
+    ("eval", descend ),
     ("def", fnDef ) ]
 
 prims = map makeDef progFunctions

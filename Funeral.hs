@@ -107,8 +107,8 @@ parseComment = token $ pure Comm <*> keyword "--" |> ( maybeSome $ anyCharExcept
 parseId :: Parser String
 parseId = token $ pure (:) <*> anyCharExcept reservedPrefixes <*> ( maybeSome $ anyCharExcept reservedChars )
     where
-        reservedPrefixes = "'.0123456789" ++ reservedChars
-        reservedChars = " \t\n\r\0[]\"`()"
+        reservedPrefixes = "'.0123456789\"`" ++ reservedChars
+        reservedChars = " \t\n\r\0()[]"
 
 parseBool :: Parser Expr
 parseBool = pure Bool <*> ( pure read <*> ( keyword "True" <|> keyword "False" ) )
@@ -304,7 +304,7 @@ progFunctions = [
     ("croak",  fnError ),
     
     ("defined", fnDefined ),
-    ("eval", descend ),
+    ("eval", fnEval ),
     ("def", fnDef ) ]
 
 prims = map makeDef progFunctions

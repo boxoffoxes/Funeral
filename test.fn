@@ -50,7 +50,7 @@ def TEST [
 	swap dip '= dup apply dip 'dup
 ]
 def _REPORT_FAILURE [ -- act exp name -> msg
-	append append swap
-	append swap " :: FAILED. Expected " show swap
-	append swap ". Actual " show -- actStr exp name
+	append prepend
+	prepend " :: FAILED. Expected " show swap
+	prepend ". Actual " show -- actStr exp name
 ]

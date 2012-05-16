@@ -85,33 +85,47 @@ def var			[ newTag "var" ]
 
 -- General HTML generation...
 
-TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
-TEST [ newTag "html" [] ]   "<html></html>"  "newTag"
-TEST [ renderOpenTag "x"  ]   "<x"    "renderOpenTag"
-TEST [ renderAttrs [[a "b"] [c "d"]] ] ` a="b" c="d"` "renderAttrs: several"
-TEST [ renderAttrs '[a "b"] ] ` a="b"` "renderAttrs: one"
+-- TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
+-- TEST [ newTag "html" [] ]   "<html></html>"  "newTag"
+--TEST [ renderTag "a" [key "value"] [ "contents" ] ]
+
+
+--renderTag "div" 'id="myDiv" [ renderTag "p" [] ["contents"] ]
+-- newTag "a" [href="#" ; newTag "p" ["content"] ]
+
+TEST [ renderTag "a" [href="#"] [ "contents" ] ] `<a href="#">contents</a>` "renderTag"
+TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
+TEST [ renderAttrs [a="b" c="d"] ] ` a="b" c="d"` "renderAttrs: several"
+TEST [ renderAttrs [a="b"] ] ` a="b c"` "renderAttrs: one"
 TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
-TEST [ renderAttr [a "b"] ]   ` a="b"` "renderAttr"
+TEST [ renderAttr a="b" ]   ` a="b"` "renderAttr"
 TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 
-def newTag [ -- id args
+def newTag [ -- "id" 'args
+	renderTag
+	dip [ partition [ = "word" type quote ] ]
+]
+-- def newEmptyTag [
+
+	-- dig 2 renderContent
+	-- dip [ partition [ = "quotation" type ] ]
+-- ]
+--def renderEmptyTag [ -- "id 'attrs 'content
+	--*null
+	--'renderContent
+--]
+def renderTag [ -- "id" 'attrs 'content
 	times 4 'prepend
 	renderOpenTag
 	bury 2 ">"
 	bury 3 renderCloseTag dup
 	dip 'renderAttrs
 	dig 2 'renderContent
-	dip [ partition [ = "quotation" type ] ]
 ]
-def renderContent []
+def renderContent [ concat ]
 def renderOpenTag  [ prepend "<" ]
 def renderAttrs    [ concat map 'renderAttr ]
-def renderAttr [
-    prepend " "
-    times 2 'append -- concatenate
-    swap "=" drop  -- drop empty list and insert =
-    times 2 [swap show uncons] -- break the list key and value
-]
+def renderAttr [ prepend " " show ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 

@@ -90,15 +90,22 @@ def var			[ newTag "var" ]
 --TEST [ renderTag "a" [key "value"] [ "contents" ] ]
 
 
---renderTag "div" 'id="myDiv" [ renderTag "p" [] ["contents"] ]
+-- renderTag "div" 'id="myDiv" [ renderTag "p" [] ["contents"] ]
 -- newTag "a" [href="#" ; newTag "p" ["content"] ]
 
-TEST [ renderTag "a" [href="#"] [ "contents" ] ] `<a href="#">contents</a>` "renderTag"
+fold [
+	prepend dip 'swap times 2 'prepend
+	" " dip [show uncons] show
+]
+"" [key="value" a="b"]
+
+
+--TEST [ times 3 'prepend renderTag "a" [href="#"] [ "contents" ] [] ] `<a href="#">contents</a>` "renderTag"
+-- renderTag "a" [href="#"] [ "contents" ]  []
 TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
-TEST [ renderAttrs [a="b" c="d"] ] ` a="b" c="d"` "renderAttrs: several"
-TEST [ renderAttrs [a="b"] ] ` a="b c"` "renderAttrs: one"
-TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
-TEST [ renderAttr a="b" ]   ` a="b"` "renderAttr"
+-- TEST [ renderAttrs [a="b" c="d"] ] ` a="b" c="d"` "renderAttrs: several"
+-- TEST [ renderAttrs [a="b"] ]   ` a="b"` "renderAttrs: one"
+-- TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
 TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 
 def newTag [ -- "id" 'args
@@ -115,17 +122,27 @@ def newTag [ -- "id" 'args
 	--'renderContent
 --]
 def renderTag [ -- "id" 'attrs 'content
-	times 4 'prepend
+	times 2 'prepend
 	renderOpenTag
 	bury 2 ">"
 	bury 3 renderCloseTag dup
 	dip 'renderAttrs
 	dig 2 'renderContent
 ]
-def renderContent [ concat ]
+def renderContent [
+	doif
+		[]
+		[ apply ]
+	*isString
+]
 def renderOpenTag  [ prepend "<" ]
-def renderAttrs    [ concat map 'renderAttr ]
-def renderAttr [ prepend " " show ]
+def renderAttrs    [ -- concat map 'renderAttr ]
+	fold [
+		times 3 prepend
+		" " show dip 'uncons show uncons -- get " ", key= and "value"
+	] []
+]
+-- def renderAttr [ prepend " " show ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 

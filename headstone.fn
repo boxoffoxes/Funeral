@@ -29,6 +29,7 @@
 -- case [ 1 'f1  2 'f2  3 'f3 ... 'else ]
 --def case []
 
+def *isString [ isString dup ]
 def concat [ fold 'prepend [] ]
 
 def prepend [ append swap ]

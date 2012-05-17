@@ -107,8 +107,8 @@ parseComment = token $ pure Comm <*> keyword "--" |> ( maybeSome $ anyCharExcept
 parseId :: Parser String
 parseId = token $ pure (:) <*> anyCharExcept reservedPrefixes <*> ( maybeSome $ anyCharExcept reservedChars )
     where
-        reservedPrefixes = "'.0123456789\"`" ++ reservedChars
-        reservedChars = " \t\n\r\0()[]"
+        reservedPrefixes = "'.0123456789" ++ reservedChars
+        reservedChars = " \t\n\r\0()[]\"\'"
 
 parseBool :: Parser Expr
 parseBool = pure Bool <*> ( pure read <*> ( keyword "True" <|> keyword "False" ) )
@@ -170,6 +170,13 @@ fnType (Quot [Fun _]:st)    = strToQuote "function":st -- Without quotation Fun 
 fnType (Quot [Num _]:st)    = strToQuote "number":st
 fnType (Quot [Def _ _]:st)  = strToQuote "definition":st
 fnType st = barf st "Type must be called on a quoted value."
+
+fnIsString :: Prog -> Prog
+fnIsString (Quot es:st)     = if all isChar es then Bool True:st else Bool False:st
+	where
+		isChar (Chr _) = True
+		isChar _ = False
+fnIsString (e:st) = Bool False:st
 
 fnDefined (Quot [Word w]:st) = case findDef w st of
     Nothing -> Bool False:st
@@ -289,6 +296,7 @@ progFunctions = [
     ( "append",  \(Quot b:Quot a:st) -> Quot (a ++ b):st ),
 
     ( "show",    \(e:st) -> (strToQuote $ show e):st ),
+	( "isString", fnIsString ),
     ( "type",    fnType ),
 
     ("dip", fnDip),

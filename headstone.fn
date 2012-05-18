@@ -30,7 +30,7 @@
 --def case []
 
 def *isString [ isString dup ]
-def concat [ fold 'prepend [] ]
+def concat [ fold 'append [] ]
 
 def prepend [ append swap ]
 
@@ -55,7 +55,7 @@ def filter [ -- 'pred [list]
 
 def *length [length dup]
 def length [
-    fold [+ 1 dip 'drop] 0
+    fold [+ 1 drop] 0
 ]
 
 def file [ -- 'pred [dest1] [dest2] elem
@@ -68,26 +68,29 @@ def file [ -- 'pred [dest1] [dest2] elem
 
 def *map [ map dip 'dup ]
 def map [ -- 'f [list]
-    fold  -- result: fold [ cons f swap ] []
-	append 'swap
+    fold
+	-- append 'swap
 	append exhume 2  -- recover 'f
 	'cons
 	[]
 	dip 'reverse
 ]
 
-def reverse [ fold [cons swap] [] ]
+def foldr* [ fold dig 2 [reverse dup] ]
+def foldr [ fold dig 2 'reverse ]
+
+def reverse [ fold 'cons [] ]
 
 def odd [= 1 % 2]
 def even [= 0 % 2]
 
 -- fold [fun] start [list]
 def *fold [ fold dig 2 'dup ]
-def fold [
-    doif
-        [ dip 'drop drop ] -- cleanup
-        [ fold *apply dig 2 'uncons ]
-    dip 'unrot *null rot
+def fold [ -- 'f start [list] // repeats f .l start
+	doif
+		[ dip 'drop drop ]
+		[ fold *apply dip 'swap dig 2 'uncons ]
+	dip 'unrot *null rot
 ]
 
 def dup2 [ dup dip 'dup ]
@@ -95,13 +98,32 @@ def rot  [ exhume 2 ]
 def unrot [ bury 2 ]
 def *null [ null dup ]
 
+-- def while [ -- 'pred 'f // execute 'f while 'pred remains true
+-- 	doif
+-- 		[dip 'while exhume 2 dip '*apply]
+-- 		[drop drop]
+-- 	bury 2 dip [ swap *apply dip 'dup ] swap
+-- ]
 
--- n [fun] // Do [fun] n times.
+def for [ -- n 'fun // execute 'fun on the top n stack items
+	doif
+		[ dip [for - 1] exhume 2 dip '*apply ]
+		[ drop drop ]
+	> 0 dup
+]
+
+-- n [fun] // Repeat [fun] n times.
 def times [
-    doif [ times - 1 dip '*apply ] [ drop drop ] > 0 dup
+    doif 
+		[ times - 1 dip '*apply ]
+		[ drop drop ]
+	> 0 dup
 ]
 def *apply [ dip 'apply dup ]
 
 def doif [ apply ifte ]
 def ifte [ or dip 'and swap ]
 def swap [ exhume 1 ]
+def *head [ head dup ]
+def head [ dip 'drop uncons ]
+def *uncons [ uncons dup ]

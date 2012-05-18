@@ -1,7 +1,9 @@
+div [class="cl" ; p a [href="#" "text"] ]
+
 def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
-def html		[ newTag [ xmlns="http://www.w3.org/1999/xhtml" ; "html" ] ]
--- def html		[ newTag "html" ]
+--def html		[ newTag "html" [ xmlns="http://www.w3.org/1999/xhtml"] ]
+def html		[ newTag "html" ]
 def a			[ newTag "a" ]
 def abbr		[ newTag "abbr" ]
 def acronym		[ newTag "acronym" ]
@@ -37,6 +39,7 @@ def h3			[ newTag "h3" ]
 def h4			[ newTag "h4" ]
 def h5			[ newTag "h5" ]
 def h6			[ newTag "h6" ]
+def Head        [ newTag "head" ]
 -- def head		[ newTag "head" ]
 def hr			[ newEmptyTag "hr" ]
 def i			[ newTag "i" ]
@@ -49,6 +52,7 @@ def label		[ newTag "label" ]
 def legend		[ newTag "legend" ]
 def li			[ newTag "li" ]
 def link		[ newEmptyTag "link" ]
+def Map         [ newTag "map" ]
 -- def map			[ newTag "map" ]
 def meta		[ newEmptyTag "meta" ]
 def noframes	[ newTag "noframes" ]
@@ -87,63 +91,90 @@ def var			[ newTag "var" ]
 
 -- TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
 -- TEST [ newTag "html" [] ]   "<html></html>"  "newTag"
---TEST [ renderTag "a" [key "value"] [ "contents" ] ]
+--TEST [ newTag "a" [key "value"] [ "contents" ] ]
 
 
--- renderTag "div" 'id="myDiv" [ renderTag "p" [] ["contents"] ]
+--newTag "div" [ id="myDiv" newTag "p" ["contents"] ]
 -- newTag "a" [href="#" ; newTag "p" ["content"] ]
 
-fold [
-	prepend dip 'swap times 2 'prepend
-	" " dip [show uncons] show
-]
-"" [key="value" a="b"]
+-- fold [
+	-- prepend dip 'swap times 2 'prepend
+	-- " " dip [show uncons] show
+-- ]
+-- "" [key="value" a="b"]
 
-
---TEST [ times 3 'prepend renderTag "a" [href="#"] [ "contents" ] [] ] `<a href="#">contents</a>` "renderTag"
--- renderTag "a" [href="#"] [ "contents" ]  []
+-- newTag "p" newTag "a" [href="#" "cheese"]
+-- newTag "a" [href="#" "contents" ]
+--TEST [ newTag "tr" [ newTag "td" '"contents" ] ] "<tr><td>contents</td></tr>"  "newTag nested"
+TEST [ newEmptyTag "br" [class="a"] ] `<br class="a" />` "newEmptyTag"
+TEST [ newTag "a" [href="#" "contents" ] ] `<a href="#">contents</a>` "newTag"
 TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
--- TEST [ renderAttrs [a="b" c="d"] ] ` a="b" c="d"` "renderAttrs: several"
--- TEST [ renderAttrs [a="b"] ]   ` a="b"` "renderAttrs: one"
--- TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
+TEST [ renderAttrs [`a="b"` `c="d"`] ] ` a="b" c="d"` "renderAttrs: several"
+TEST [ renderAttrs [`a="b"`] ]   ` a="b"` "renderAttrs: one"
+TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
 TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 
-def newTag [ -- "id" 'args
-	renderTag
-	dip [ partition [ = "word" type quote ] ]
+def newEmptyTag [ -- "id 'attrs 'content
+	doif
+		[
+			times 2 'prepend
+			renderOpenTag
+			bury 2 " />"
+			dip 'renderAttrs
+			dig 2 'drop
+		]
+		'newTag
+	exhume 2 dig 2 '*null
+	dip [ partitionAttrs [] ]
 ]
--- def newEmptyTag [
-
-	-- dig 2 renderContent
-	-- dip [ partition [ = "quotation" type ] ]
--- ]
---def renderEmptyTag [ -- "id 'attrs 'content
-	--*null
-	--'renderContent
---]
-def renderTag [ -- "id" 'attrs 'content
+def newTag [ -- "tag" 'content
+	assembleTag
 	times 2 'prepend
 	renderOpenTag
 	bury 2 ">"
-	bury 3 renderCloseTag dup
-	dip 'renderAttrs
-	dig 2 'renderContent
+	dip [
+		renderAttrs
+		dip 'renderContent
+		partitionAttrs []
+	]
+	bury 2 renderCloseTag dup
 ]
 def renderContent [
 	doif
 		[]
-		[ apply ]
+		'apply
 	*isString
 ]
 def renderOpenTag  [ prepend "<" ]
-def renderAttrs    [ -- concat map 'renderAttr ]
-	fold [
-		times 3 prepend
-		" " show dip 'uncons show uncons -- get " ", key= and "value"
-	] []
+def renderAttrs    [
+	fold [ append prepend " " ] []
 ]
 -- def renderAttr [ prepend " " show ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
+def partitionAttrs [ -- [] [content]
+	doif
+		[partitionAttrs cons prepend bury 2 dip [ for 2 [show uncons]] ]
+		[]
+	swap dip 'identifyAttr
+]
+def identifyAttr [
+	doif
+		[ not null filter [= .=] show *head ] 
+		'False
+	doif
+		'False
+		[= "word" type quote *head]
+	*null 
+]
 
+def assembleTag [
+	doif
+		[assembleTag prepend]
+		'prepend
+	swap dip [!= "</" dip 'drop splitAt 2 dup]
+]
+
+def ; []
+def , []
 -- vim:filetype=funeral

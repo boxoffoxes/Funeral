@@ -3,7 +3,7 @@ module Main where
 import System( getArgs )
 import Char
 import IO (readFile)
-import List (nubBy, partition, intersperse, find)
+import List (nubBy, partition, intersperse)
 
 import Debug.Trace
 
@@ -15,7 +15,7 @@ data Expr = Word Id
           -- | Pair Expr Expr
           | Chr Char
           | Num Int
-          | Fun (State -> State)
+          | Fun Id (State -> State)
           | Def Id [Expr]
           | Comm String
 data Definition = Defn Id Prog
@@ -27,7 +27,7 @@ instance Eq Expr where
     Chr  c == Chr  d    =    c == d
     Quot es == Quot xs  =    es == xs
     -- Pair e f == Pair x y =   e == x && x == y
-    Fun _ == Fun _      =    error "Cannot compare functions"
+    Fun _ _ == Fun _ _  =    error "Cannot compare functions"
     Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
 
@@ -38,7 +38,7 @@ instance Ord Expr where
     Chr  c <= Chr  d    =    c <= d
     Quot es <= Quot xs  =    es <= xs
     -- Pair e f == Pair x y =   e == x && x == y
-    Fun _ <= Fun _      =    error "Cannot compare functions"
+    Fun _ _ <= Fun _ _  =    error "Cannot compare functions"
     Def _ _ <= Def _ _  =    error "Cannot compare definitions"
     _      <= _         =    error "Cannot compare values of differing types"
     
@@ -55,7 +55,7 @@ instance Show Expr where
         where
             typeIsChar (Chr _) = True
             typeIsChar _       = False
-    show (Fun _) = "<function>"
+    show (Fun id _) = "<prim:" ++ id ++ ">"
     show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
@@ -221,6 +221,7 @@ fnSplitAt :: Prog -> Prog
 fnSplitAt (Num n:Quot es:st) = Quot as:Quot bs:st
     where
         (as, bs) = splitAt n es
+fnSplitAt st = barf st "Couldn't split a non-quote value"
 
 fnCons :: Prog -> Prog
 fnCons (e:Quot es:st) = Quot (e:es):st
@@ -254,6 +255,15 @@ listManipulationFunctions = [
 fnError :: Prog -> Prog
 fnError (msg:st) = barf st (show msg)
 
+fnPrint :: Prog -> Prog
+fnPrint (e:st) = trace (show e) st
+
+fnTrace :: Prog -> Prog
+fnTrace (e:st) = trace ("+++ Trace: " ++ (show e) ) (e:st)
+
+fnTraceAll :: Prog -> Prog
+fnTraceAll st = trace (" +++ TraceAll: " ++ (show $ Quot st) ) st
+
 fnShow :: Prog -> Prog
 fnShow (e:st) = (strToQuote $ show e):st
 fnShow [] = []
@@ -263,7 +273,7 @@ fnType (Quot [Quot _]:st)   = strToQuote "quotation":st
 fnType (Quot [Word _]:st)   = strToQuote "word":st
 fnType (Quot [Bool _]:st)   = strToQuote "boolean":st
 fnType (Quot [Chr _]:st)    = strToQuote "character":st
-fnType (Quot [Fun _]:st)    = strToQuote "function":st -- Without quotation Fun consumes its args.
+fnType (Quot [Fun _ _]:st)  = strToQuote "function":st -- Without quotation Fun consumes its args.
 fnType (Quot [Num _]:st)    = strToQuote "number":st
 fnType (Quot [Def _ _]:st)  = strToQuote "definition":st
 fnType st = barf st "type must be called on a quoted value."
@@ -277,6 +287,9 @@ fnIsString (e:st) = Bool False:st
 
 miscFunctions = [
     ( "show",     promoteProgFn $ fnShow ),
+    ( "print",    promoteProgFn $ fnPrint ),
+    ( "trace",    promoteProgFn $ fnTrace ),
+    ( "traceAll", promoteProgFn $ fnTraceAll ),
 	( "isString", promoteProgFn $ fnIsString ),
     ( "type",     promoteProgFn $ fnType ),
     ( "croak",    promoteProgFn $ fnError ) ]
@@ -284,14 +297,14 @@ miscFunctions = [
 -- State -> State functions
 
 fnDef :: State -> State
-fnDef (l, Word id:Quot es:st)        = (Defn id es:l, st)
-fnDef (l, Quot [Word id]:Quot es:st) = (Defn id es:l, st) -- Need to pre-process and sub-in 
+fnDef (l, Word id:Quot es:st)        = (Defn id (expand l es):l, st)
+fnDef (l, Quot [Word id]:Quot es:st) = (Defn id (expand l es):l, st) -- Need to pre-process and sub-in 
 fnDef (l, Word id:e:st)  = barf st "Definitions must be quoted"
-fnDef (l, Fun _:st) = barf st "Attempted to redefine a word."
+--fnDef (l, Fun id _:st) = barf st $ "Attempted to redefine the word " ++ id ++ ". If you meant to do this call \n\tdef '" ++ id ++ " [...\ninstead"
 fnDef (l, e:st) = barf st $ "Can't define " ++ show e
 
 fnApply :: State -> State
-fnApply (l, Fun f:st)     = descend (l', st')
+fnApply (l, Fun _ f:st)     = descend (l', st')
     where
         (l', st') = f (l, st)
 fnApply (l, Quot es:st)   = descend (l, es ++ st)
@@ -305,24 +318,35 @@ fnDig (l, Num n:Quot q:st) = (l', es ++ st')
 
 fnDefined :: State -> State
 fnDefined (l, Quot [Word w]:st) = case getContext w l of
-    [] -> (l, Bool False:st)
-    _  -> (l, Bool True:st)
+                                    [] -> (l, Bool False:st)
+                                    _  -> (l, Bool True:st)
+fnDefined (l, st) = barf st "defined called on a value other than a quoted word"
 
 fnEval :: State -> State
-fnEval t@(l, [])           = t
+fnEval t@(l, [])       = t
 fnEval (l, Word w:st)  = case getContext w l of
                           []                -> (l, Word w:st)
-                          ctx@(Defn _ es:_) -> descend (ctx, es ++ st)
-fnEval t@(l, Fun f:st) = fnApply t
+                          (Defn _ es:_)     -> descend (l, es ++ st)
+fnEval t@(l, Fun _ f:st) = fnApply t
 fnEval (l, Comm _:st)  = (l, st)
 fnEval (l, e:st)       = (l, e:st)
- 
+
+
 -- utility functions
 
 getContext :: Id -> Library -> Library
 getContext w l = dropWhile notMyDef l
     where
         notMyDef (Defn id _) = id /= w
+
+expand :: Library -> Prog -> Prog
+expand l (Word w:st) = case getContext w l of
+                        [] -> Word w : expand l st
+                        (Defn _ es : l') -> expand l' es ++ expand l st
+expand l (Quot q:st) = Quot (expand l q) : expand l st
+expand l (e:st)      = e:(expand l st)
+expand l []          = []
+
 
 descend :: State -> State
 descend (l, []) = (l, [])
@@ -332,10 +356,10 @@ descend (l, e:st) = fnEval (l', e:st')
 
 numericBinaryPrim :: (Int -> Int -> Int) -> Prog -> Prog
 numericBinaryPrim f (Num y  : Num x  : st) = (Num  (f x y) : st)
--- numericBinaryPrim f st = Fun (promoteProgFn $ numericBinaryPrim f):st
+-- numericBinaryPrim f st = Fun _ (promoteProgFn $ numericBinaryPrim f):st
 
 primDef :: (String, State -> State) -> Definition
-primDef (id, f) = Defn id [Fun f]
+primDef (id, f) = Defn id [Fun id f]
 
 promoteProgFn :: (Prog -> Prog) -> State -> State
 promoteProgFn f (l, st) = (l, f st)

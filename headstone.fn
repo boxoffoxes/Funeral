@@ -124,7 +124,16 @@ def *apply [ dip 'apply dup ]
 def doif [ apply ifte ]
 def ifte [ or dip 'and swap ]
 def swap [ exhume 1 ]
+
+-- DO NOT USE the head functions if there is any 
+-- possibility of the quotation containing words
+-- which are defined, as they will be evaluated 
+-- immediately they are popped from the quotation!
 def *head [ head dup ]
 def head [ dip 'drop uncons ]
+
+def *take [ dip 'drop splitAt dip 'dup ]
+def take [ dip 'drop splitAt ]
+
 def dip [ dig 1 ]
 def *uncons [ uncons dup ]

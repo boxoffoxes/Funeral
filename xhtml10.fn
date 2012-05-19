@@ -1,9 +1,15 @@
-div [class="cl" ; p a [href="#" "text"] ]
+--div [class="cl" ; p a [href="#" "text"] ]
+html [
+	Head title "My first HTML page" 
+	body div [ id="content" ; "Do some stuff" ]
+]
+
+
 
 def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
---def html		[ newTag "html" [ xmlns="http://www.w3.org/1999/xhtml"] ]
-def html		[ newTag "html" ]
+def html		[ newTag "html" prepend [ xmlns="http://www.w3.org/1999/xhtml"] ]
+--def html		[ newTag "html" ]
 def a			[ newTag "a" ]
 def abbr		[ newTag "abbr" ]
 def acronym		[ newTag "acronym" ]
@@ -109,6 +115,9 @@ def var			[ newTag "var" ]
 TEST [ newEmptyTag "br" [class="a"] ] `<br class="a" />` "newEmptyTag"
 TEST [ newTag "a" [href="#" "contents" ] ] `<a href="#">contents</a>` "newTag"
 TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
+TEST [ renderContent [ newTag "a" "b" ] ]  "<a>b</a>"  "renderContent tag"
+TEST [ renderContent '"list" ]  "list"  "renderContent list"
+TEST [ renderContent "str" ]  "str"  "renderContent string"
 TEST [ renderAttrs [`a="b"` `c="d"`] ] ` a="b" c="d"` "renderAttrs: several"
 TEST [ renderAttrs [`a="b"`] ]   ` a="b"` "renderAttrs: one"
 TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
@@ -147,9 +156,8 @@ def renderContent [
 ]
 def renderOpenTag  [ prepend "<" ]
 def renderAttrs    [
-	fold [ append prepend " " ] []
+	fold [ append cons .  ] []  -- beware! space character!
 ]
--- def renderAttr [ prepend " " show ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 def partitionAttrs [ -- [] [content]

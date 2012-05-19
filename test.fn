@@ -18,12 +18,14 @@ TEST [ concat [ "abc" "def" "gh" "i" ] ] "abcdefghi"  "List concat"
 
 TEST [ prepend "a" "bc" ] "abc"  "List prepend"
 
+TEST [ cons *head [1 2 3] ] [1 1 2 3] "List *head"
+TEST [ head [1 2 3] ] 1 "List head"
 TEST [ cons partition 'even [1 2 3 4 5] ] [ [2 4] 1 3 5] "List partition"
 TEST [ filter 'odd [1 2 3 4 5] ] [1 3 5] "List filter"
 TEST [ length [a b c d e f g] ] 7 "List length"
 TEST [ map [+ 1] [1 2 3] ] [2 3 4] "List map"
 TEST [ reverse "hello" ] "olleh"  "List reversal"
-TEST [ fold '+ 0 [ 1 2 3 4 5 ] ] 15 "Fold addition"
+TEST [ fold '+ 0 [ 1 2 3 4 5 ] ] 15 "List fold addition"
 
 TEST [ times 3 [+ 1] 0 ]  3  "Repeated function application"
 TEST [ ifte "then" "else" True ]  "then"  "ifte: True -> then"

@@ -343,15 +343,17 @@ promoteProgFn f (l, st) = (l, f st)
 ---------------------------------------------------------------------
 -- Primitive definitions
 ---------------------------------------------------------------------
-stateFunctions = [
-    
-    --("dip", fnDip),
-    ("dig", fnDig),
-    ("apply", fnApply),
-
-    ("defined", fnDefined ),
-    ("eval", fnEval ),
-    ("def", fnDef ) ]
+stateFunctions = stackManipulationFunctions 
+              ++ logicalFunctions 
+              ++ comparisonFunctions 
+              ++ arithmeticFunctions
+              ++ listManipulationFunctions
+              ++ miscFunctions
+              ++ [ ("dig", fnDig),
+                   ("apply", fnApply),
+                   ("defined", fnDefined ),
+                   ("eval", fnEval ),
+                   ("def", fnDef ) ]
 
 prims = map primDef stateFunctions
 

@@ -1,11 +1,3 @@
---div [class="cl" ; p a [href="#" "text"] ]
-html [
-	Head title "My first HTML page" 
-	body div [ id="content" ; "Do some stuff" ]
-]
-
-
-
 def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
 def html		[ newTag "html" prepend [ xmlns="http://www.w3.org/1999/xhtml"] ]
@@ -45,8 +37,7 @@ def h3			[ newTag "h3" ]
 def h4			[ newTag "h4" ]
 def h5			[ newTag "h5" ]
 def h6			[ newTag "h6" ]
-def Head        [ newTag "head" ]
--- def head		[ newTag "head" ]
+def 'head		[ newTag "head" ] -- quoted because head is already defined
 def hr			[ newEmptyTag "hr" ]
 def i			[ newTag "i" ]
 def iframe		[ newTag "iframe" ]
@@ -58,8 +49,7 @@ def label		[ newTag "label" ]
 def legend		[ newTag "legend" ]
 def li			[ newTag "li" ]
 def link		[ newEmptyTag "link" ]
-def Map         [ newTag "map" ]
--- def map			[ newTag "map" ]
+def 'map			[ newTag "map" ]
 def meta		[ newEmptyTag "meta" ]
 def noframes	[ newTag "noframes" ]
 def noscript	[ newTag "noscript" ]
@@ -93,6 +83,10 @@ def tt			[ newTag "tt" ]
 def ul			[ newTag "ul" ]
 def var			[ newTag "var" ]
 
+-- these two functions will be masked by the above definitions
+def Map 'map
+def Head 'head
+
 -- General HTML generation...
 
 -- TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
@@ -122,6 +116,8 @@ TEST [ renderAttrs [`a="b"` `c="d"`] ] ` a="b" c="d"` "renderAttrs: several"
 TEST [ renderAttrs [`a="b"`] ]   ` a="b"` "renderAttrs: one"
 TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
 TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
+TEST [ cons dip 'cons partitionAttrs [] [ a="1" b="2" head d e ] [] ] 
+    [ [`b="2"` `a="1"`] [head d e] ] "partitionAttrs containing defined word"
 
 def newEmptyTag [ -- "id 'attrs 'content
 	doif
@@ -143,7 +139,7 @@ def newTag [ -- "tag" 'content
 	bury 2 ">"
 	dip [
 		renderAttrs
-		dip 'renderContent
+		dip [renderContent ]
 		partitionAttrs []
 	]
 	bury 2 renderCloseTag dup
@@ -166,13 +162,19 @@ def partitionAttrs [ -- [] [content]
 		[]
 	swap dip 'identifyAttr
 ]
+
 def identifyAttr [
+    -- if any of the words being examined with *head are 
+    -- defined they will be evaluated as soon as 
 	doif
-		[ not null filter [= .=] show *head ] 
+		[= .= head reverse show *head] 
 		'False
+    doif
+        [not defined *take 1]
+        'False
 	doif
 		'False
-		[= "word" type quote *head]
+		[= "word" type *take 1]
 	*null 
 ]
 
@@ -183,6 +185,9 @@ def assembleTag [
 	swap dip [!= "</" dip 'drop splitAt 2 dup]
 ]
 
+-- Define these to do nothing so they can be used to make our
+-- small HTML-writing DSL more readable...
 def ; []
 def , []
+
 -- vim:filetype=funeral

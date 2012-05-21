@@ -152,7 +152,7 @@ def renderContent [
 ]
 def renderOpenTag  [ prepend "<" ]
 def renderAttrs    [
-	fold [ append cons .  ] []  -- beware! space character!
+	fold [ append cons .  ] []  -- beware! literal space character!
 ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 

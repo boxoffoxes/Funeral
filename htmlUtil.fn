@@ -2,20 +2,12 @@ text [ name="a" value="b" "this is a label" ]
 
 def text [
     label 
-    dip [ input prepend [type="text"] ]
-    swap partitionAttrs []
+    newTag "input"
+    renderAttrs
+    partitionAttrs [] 
+    prepend [type="text"]
 ]
 
-
--- whoa! Crazy scoping rules!
-blah
-
-test "hello"
-blah
-def test [
-    forget 'blah
-    def blah 
-]
 
 
 

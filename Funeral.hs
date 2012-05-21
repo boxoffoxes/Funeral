@@ -26,7 +26,7 @@ instance Eq Expr where
     Bool b == Bool c    =    b == c
     Chr  c == Chr  d    =    c == d
     Quot es == Quot xs  =    es == xs
-    -- Pair e f == Pair x y =   e == x && x == y
+    -- Pair e f == Pair x y =   e == x && f == y
     Fun _ _ == Fun _ _  =    error "Cannot compare functions"
     Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
@@ -37,7 +37,7 @@ instance Ord Expr where
     Bool b <= Bool c    =    b <= c
     Chr  c <= Chr  d    =    c <= d
     Quot es <= Quot xs  =    es <= xs
-    -- Pair e f == Pair x y =   e == x && x == y
+    -- Pair e f <= Pair x y =   e <= x && f <= y
     Fun _ _ <= Fun _ _  =    error "Cannot compare functions"
     Def _ _ <= Def _ _  =    error "Cannot compare definitions"
     _      <= _         =    error "Cannot compare values of differing types"

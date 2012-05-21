@@ -29,6 +29,36 @@
 -- case [ 1 'f1  2 'f2  3 'f3 ... 'else ]
 --def case []
 
+def dictLookup []
+
+def set [  -- key val [dict]
+    
+]
+
+def delete [ -- key [dict]
+    
+]
+
+def *lookup [ lookup dip 'dup ]
+def lookup [  -- key [dict]
+    doif
+        []
+        [head]
+    *null
+    filter prepend prepend '= swap 'fst quote
+]
+
+def *snd [ snd dup ]
+def snd [ head tail ] -- [key val]
+def *fst [ snd dup ]
+def fst [ head ] -- [key val]
+
+def isPair [ = 2 length ] -- [pair]
+def pair [  -- key val -> [key val]
+    cons
+    dip [ cons swap [] ]
+]
+
 def *isString [ isString dup ]
 def concat [ fold 'append [] ]
 

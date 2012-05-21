@@ -1,20 +1,44 @@
-text [ name="a" value="b" "this is a label" ]
-
-def text [
-    label 
-    cons prepend
-    input
-    swap []
-    concat partitionAttrs [] 
-    prepend [type="text"]
+form [ action="#" method="post" ;
+    checkbox [ name="b" ; "I'm a czech box" ]
+    text [ name="a" value="b" "this is a label" ]
+    submit [ value="Clickety"]
 ]
 
+--def submit [ _input "submit" ]
+def checkbox [ _label_after _input "checkbox" ]
+def radio [ _label_after _input "radio" ]
 
+def file [ _label_before _input "file" ]
+def text [ _label_before _input "text" ]
+def submit [ _label_before _input "submit"]
+
+def _input [
+    prepend
+    input
+    swap []
+    concat
+    copyTo id= name=
+    partitionAttrs [] 
+    prepend pair type=
+]
+
+def _label_after [
+    doif -- create an optional label after the input (radio, checkbox...)
+        [ dip 'drop ]
+        [ label cons ]
+    swap dip '*null
+]
+def _label_before [
+    doif -- create an optional label before the input (text, file...)
+        [ dip 'drop ]
+        [ label append quote ]
+    swap dip '*null
+]
 
 def uniStatusList [
-	option [ "Awarded" ]
-	option [ "Pending award" ]
-	option [ "Exam to be taken" ]
+	option "Awarded"
+	option "Pending award"
+	option "Exam to be taken"
 ]
 
 

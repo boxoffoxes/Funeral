@@ -182,7 +182,7 @@ def assembleTag [
 	doif
 		[assembleTag prepend]
 		'prepend
-	swap dip [!= "</" dip 'drop splitAt 2 dup]
+	swap dip [!= "</" *take 2 ] -- dip 'drop splitAt 2 dup]
 ]
 
 -- Define these to do nothing so they can be used to make our

@@ -34,6 +34,12 @@ def overlay [ -- [dict1] [dict2] // merge two dicts, replacing values in [dict2]
     times swap [ dip [set break] swap uncons ] *length 
 ]
 
+def copyTo [ -- dest src [dict] // if key src exists and has a non-null value set key dest to have the same value
+	doif
+		[times 2 drop]
+		[set dip 'snd]
+	swap dip [*null *lookup]
+]
 def set [  -- key val [dict]
     cons            -- prepend the pair onto [dict]
     dip 'delete     -- delete any existing entry for key
@@ -105,13 +111,13 @@ def length [
     fold [+ 1 drop] 0
 ]
 
-def file [ -- 'pred [dest1] [dest2] elem
-	doif
-		[ dip exhume 2 ] -- file in dest1
-		[] -- file in dest2
-	rot dig 2 'apply unrot
-	dig 3 'dup
-]
+-- def file [ -- 'pred [dest1] [dest2] elem
+-- 	doif
+-- 		[ dip exhume 2 ] -- file in dest1
+-- 		[] -- file in dest2
+-- 	rot dig 2 'apply unrot
+-- 	dig 3 'dup
+-- ]
 
 def *map [ map dip 'dup ]
 def map [ -- 'f [list]
@@ -176,6 +182,9 @@ def swap [ exhume 1 ]
 -- possibility of the quotation containing words
 -- which are defined, as they will be evaluated 
 -- immediately they are popped from the quotation!
+def *tail [ tail dup ]
+def tail [ drop uncons ]
+
 def *head [ head dup ]
 def head [ dip 'drop uncons ]
 

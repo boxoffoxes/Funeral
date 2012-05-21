@@ -112,12 +112,12 @@ TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
 TEST [ renderContent [ newTag "a" "b" ] ]  "<a>b</a>"  "renderContent tag"
 TEST [ renderContent '"list" ]  "list"  "renderContent list"
 TEST [ renderContent "str" ]  "str"  "renderContent string"
-TEST [ renderAttrs [`a="b"` `c="d"`] ] ` a="b" c="d"` "renderAttrs: several"
-TEST [ renderAttrs [`a="b"`] ]   ` a="b"` "renderAttrs: one"
+TEST [ renderAttrs [[a= "b"] [c= "d"]] ] ` a="b" c="d"` "renderAttrs: several"
+TEST [ renderAttrs [[a= "b"]] ]   ` a="b"` "renderAttrs: one"
 TEST [ renderAttrs []     ]   ""     "renderAttrs: none"
 TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 TEST [ cons dip 'cons partitionAttrs [] [ a="1" b="2" head d e ] [] ] 
-    [ [`b="2"` `a="1"`] [head d e] ] "partitionAttrs containing defined word"
+    [ [[b= "2"] [a= "1"]] [head d e] ] "partitionAttrs containing defined word"
 
 def newEmptyTag [ -- "id 'attrs 'content
 	doif
@@ -152,13 +152,13 @@ def renderContent [
 ]
 def renderOpenTag  [ prepend "<" ]
 def renderAttrs    [
-	fold [ append cons .  ] []  -- beware! literal space character!
+	fold [ append prepend cons .  for 2 'show break ] []  -- beware! literal space character!
 ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 def partitionAttrs [ -- [] [content]
 	doif
-		[partitionAttrs cons prepend bury 2 dip [ for 2 [show uncons]] ]
+		[partitionAttrs set bury 2 dip [ for 2 'uncons] ]
 		[]
 	swap dip 'identifyAttr
 ]

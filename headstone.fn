@@ -29,14 +29,20 @@
 -- case [ 1 'f1  2 'f2  3 'f3 ... 'else ]
 --def case []
 
-def dictLookup []
+def overlay [ -- [dict1] [dict2] // merge two dicts, replacing values in [dict2] with those from [dict1]
+    drop
+    times swap [ dip [set break] swap uncons ] *length 
+]
 
 def set [  -- key val [dict]
-    
+    cons            -- prepend the pair onto [dict]
+    dip 'delete     -- delete any existing entry for key
+    pair            -- create a pair from key and val
+    dip 'swap dup   -- dup key and move next to [dict]
 ]
 
 def delete [ -- key [dict]
-    
+    filter prepend 'not _pairFstMatch
 ]
 
 def *lookup [ lookup dip 'dup ]
@@ -45,7 +51,11 @@ def lookup [  -- key [dict]
         []
         [head]
     *null
-    filter prepend prepend '= swap 'fst quote
+    filter _pairFstMatch
+]
+
+def _pairFstMatch [ -- key [pair] // returns a quoted search function.
+    prepend prepend '= swap 'fst quote
 ]
 
 def *snd [ snd dup ]
@@ -53,6 +63,13 @@ def snd [ head tail ] -- [key val]
 def *fst [ snd dup ]
 def fst [ head ] -- [key val]
 
+def break [
+    doif
+        [ dig 2 'drop for 2 'uncons ]
+        [error "break called on a non-pair value."]
+    *isPair
+]
+def *isPair [ isPair dup ]
 def isPair [ = 2 length ] -- [pair]
 def pair [  -- key val -> [key val]
     cons

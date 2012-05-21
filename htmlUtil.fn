@@ -2,13 +2,22 @@ text [ name="a" value="b" "this is a label" ]
 
 def text [
     label 
-    newTag "input"
-    renderAttrs
-    partitionAttrs [] 
+    cons prepend
+    input
+    swap []
+    concat partitionAttrs [] 
     prepend [type="text"]
 ]
 
 
 
+def uniStatusList [
+	option [ "Awarded" ]
+	option [ "Pending award" ]
+	option [ "Exam to be taken" ]
+]
+
+
+def _option 'option
 
 -- vim:et:filetype=funeral:

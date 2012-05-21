@@ -16,7 +16,7 @@ data Expr = Word Id
           | Chr Char
           | Num Int
           | Fun Id (State -> State)
-          | Def Id [Expr]
+          -- | Def Id [Expr]
           | Comm String
 data Definition = Defn Id Prog
 
@@ -28,7 +28,7 @@ instance Eq Expr where
     Quot es == Quot xs  =    es == xs
     -- Pair e f == Pair x y =   e == x && f == y
     Fun _ _ == Fun _ _  =    error "Cannot compare functions"
-    Def _ _ == Def _ _  =    error "Cannot compare definitions"
+    -- Def _ _ == Def _ _  =    error "Cannot compare definitions"
     _      == _         =    False
 
 instance Ord Expr where
@@ -39,7 +39,7 @@ instance Ord Expr where
     Quot es <= Quot xs  =    es <= xs
     -- Pair e f <= Pair x y =   e <= x && f <= y
     Fun _ _ <= Fun _ _  =    error "Cannot compare functions"
-    Def _ _ <= Def _ _  =    error "Cannot compare definitions"
+    -- Def _ _ <= Def _ _  =    error "Cannot compare definitions"
     _      <= _         =    error "Cannot compare values of differing types"
     
 
@@ -50,13 +50,13 @@ instance Show Expr where
     -- show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
     show (Quot es) = case all typeIsChar es of
-            True  -> "\"" ++ ( map (\(Chr c) -> c) es ) ++ "\""
+            True  -> show ( map (\(Chr c) -> c) es )
             False -> "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
         where
             typeIsChar (Chr _) = True
             typeIsChar _       = False
     show (Fun id _) = "<prim:" ++ id ++ ">"
-    show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
+    -- show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
 
@@ -256,7 +256,8 @@ fnError :: Prog -> Prog
 fnError (msg:st) = barf st (show msg)
 
 fnPrint :: Prog -> Prog
-fnPrint (e:st) = trace (show e) st
+fnPrint (e:st) = trace (format e) st
+fnPrint [] = trace "" []
 
 fnTrace :: Prog -> Prog
 fnTrace (e:st) = trace ("+++ Trace: " ++ (show e) ) (e:st)
@@ -275,7 +276,7 @@ fnType (Quot [Bool _]:st)   = strToQuote "boolean":st
 fnType (Quot [Chr _]:st)    = strToQuote "character":st
 fnType (Quot [Fun _ _]:st)  = strToQuote "function":st -- Without quotation Fun consumes its args.
 fnType (Quot [Num _]:st)    = strToQuote "number":st
-fnType (Quot [Def _ _]:st)  = strToQuote "definition":st
+-- fnType (Quot [Def _ _]:st)  = strToQuote "definition":st
 fnType st = barf st "type must be called on a quoted value."
 
 fnIsString :: Prog -> Prog
@@ -370,6 +371,16 @@ primDef (id, f) = Defn id [Fun id f]
 promoteProgFn :: (Prog -> Prog) -> State -> State
 promoteProgFn f (l, st) = (l, f st)
 
+format :: Expr -> String
+format (Quot es) = case all isChr es of
+        True -> map (\(Chr c) -> c) es
+        False -> error "Don't know how to format a non-string quotation."
+    where
+        isChr (Chr _) = True
+        isChr _ = False
+format (Num n) = show n
+format e = ""
+
 ---------------------------------------------------------------------
 -- Primitive definitions
 ---------------------------------------------------------------------
@@ -398,12 +409,8 @@ prims = map primDef stateFunctions
 barf :: Prog -> String -> a
 barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
 
-formatExpr :: Expr -> String
-formatExpr (Def _ _) = ""
-formatExpr e = show e
-
 showAst :: Prog -> String
-showAst st = concat $ intersperse "\n" $ filter (/= "") $ map formatExpr st
+showAst st = concat $ intersperse "\n" $ map show st
 
 
 main :: IO ()
@@ -411,5 +418,6 @@ main = do
     args <- getArgs
     sources <- mapM readFile (args ++ ["headstone.fn"])
     let prog = ( parse $ concat sources )
-    putStrLn $ showAst $ snd $ descend (prims, prog)
+    let result = showAst $ snd $ descend (prims, prog)
+    putStrLn result
 

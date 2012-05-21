@@ -296,6 +296,12 @@ miscFunctions = [
 
 -- State -> State functions
 
+fnForget :: State -> State
+fnForget (l, Quot [Word id]:st) = (l', st)
+    where
+        l' = tail $ getContext id l
+fnForget (l, st) = barf st "forget takes a single quoted word as an argument."
+
 fnDef :: State -> State
 fnDef (l, Word id:Quot es:st)        = (Defn id (expand l es):l, st)
 fnDef (l, Quot [Word id]:Quot es:st) = (Defn id (expand l es):l, st) -- Need to pre-process and sub-in 
@@ -374,6 +380,7 @@ stateFunctions = stackManipulationFunctions
               ++ listManipulationFunctions
               ++ miscFunctions
               ++ [ ("dig", fnDig),
+                   ("forget", fnForget),
                    ("apply", fnApply),
                    ("defined", fnDefined ),
                    ("eval", fnEval ),

@@ -1,0 +1,22 @@
+text [ name="a" value="b" "this is a label" ]
+
+def text [
+    label 
+    dip [ input prepend [type="text"] ]
+    swap partitionAttrs []
+]
+
+
+-- whoa! Crazy scoping rules!
+blah
+
+test "hello"
+blah
+def test [
+    forget 'blah
+    def blah 
+]
+
+
+
+-- vim:et:filetype=funeral:

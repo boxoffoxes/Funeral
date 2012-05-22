@@ -1,16 +1,34 @@
-form [ action="#" method="post" ;
-    checkbox [ name="b" ; "I'm a czech box" ]
-    text [ name="a" value="b" "this is a label" ]
-    submit [ value="Clickety"]
+--def submit [ _input "submit" ]
+
+def tabHeading [ h1 ]
+def tab [ div prepend [class="section"] ]
+def db_list [ _label_before _select  ]
+def list [ _label_before _select ]
+
+def _select [
+    select
+    prepend concat
+    copyTo id= name=
+    delete label=
+    bury 2 quote
+    snd *lookup label=
+    partitionAttrs []
 ]
 
---def submit [ _input "submit" ]
-def checkbox [ _label_after _input "checkbox" ]
-def radio [ _label_after _input "radio" ]
+def page [
+	pageHeader
+	renderContent
+	swap pageFooter 
+]
 
-def file [ _label_before _input "file" ]
-def text [ _label_before _input "text" ]
-def submit [ _label_before _input "submit"]
+def checkbox [ _label_after _input "checkbox" ]
+def radio    [ _label_after _input "radio" ]
+
+def file     [ _label_before _input "file" ]
+def date     [ _label_before _input "text" prepend [class="dateField"] ]
+def text     [ _label_before _input "text" ]
+def submit   [ _label_before _input "submit"]
+def hidden   [ _no_label     _input "hidden"]
 
 def _input [
     prepend
@@ -22,6 +40,9 @@ def _input [
     prepend pair type=
 ]
 
+def _no_label [
+    dip 'drop
+]
 def _label_after [
     doif -- create an optional label after the input (radio, checkbox...)
         [ dip 'drop ]
@@ -41,7 +62,5 @@ def uniStatusList [
 	option "Exam to be taken"
 ]
 
-
-def _option 'option
 
 -- vim:et:filetype=funeral:

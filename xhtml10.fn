@@ -2,44 +2,44 @@ def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
 def html		[ newTag "html" prepend [ xmlns="http://www.w3.org/1999/xhtml"] ]
 --def html		[ newTag "html" ]
-def a			[ newTag "a" ]
+def a			[ newInlineTag "a" ]
 def abbr		[ newTag "abbr" ]
-def acronym		[ newTag "acronym" ]
+def acronym		[ newInlineTag "acronym" ]
 def address		[ newTag "address" ]
 def area		[ newEmptyTag "area" ]
-def b			[ newTag "b" ]
+def b			[ newInlineTag "b" ]
 def base		[ newEmptyTag "base" ]
 def bdo			[ newTag "bdo" ]
-def big			[ newTag "big" ]
+def big			[ newInlineTag "big" ]
 def blockquote	[ newTag "blockquote" ]
 def body		[ newTag "body" ]
 def br			[ newEmptyTag "br" ]
-def button		[ newTag "button" ]
-def caption		[ newTag "caption" ]
-def cite		[ newTag "cite" ]
+def button		[ newInlineTag "button" ]
+def caption		[ newInlineTag "caption" ]
+def cite		[ newInlineTag "cite" ]
 def code		[ newTag "code" ]
 def col			[ newEmptyTag "col" ]
 def colgroup	[ newTag "colgroup" ]
-def dd			[ newTag "dd" ]
+def dd			[ newInlineTag "dd" ]
 def del			[ newTag "del" ]
 def dfn			[ newTag "dfn" ]
 def div			[ newTag "div" ]
 def dl			[ newTag "dl" ]
-def dt			[ newTag "dt" ]
-def em			[ newTag "em" ]
+def dt			[ newInlineTag "dt" ]
+def em			[ newInlineTag "em" ]
 def fieldset	[ newTag "fieldset" ]
 def form		[ newTag "form" ]
 def frame		[ newTag "frame" ]
 def frameset	[ newTag "frameset" ]
-def h1			[ newTag "h1" ]
-def h2			[ newTag "h2" ]
-def h3			[ newTag "h3" ]
-def h4			[ newTag "h4" ]
-def h5			[ newTag "h5" ]
-def h6			[ newTag "h6" ]
+def h1			[ newInlineTag "h1" ]
+def h2			[ newInlineTag "h2" ]
+def h3			[ newInlineTag "h3" ]
+def h4			[ newInlineTag "h4" ]
+def h5			[ newInlineTag "h5" ]
+def h6			[ newInlineTag "h6" ]
 def 'head		[ newTag "head" ] -- quoted because head is already defined
 def hr			[ newEmptyTag "hr" ]
-def i			[ newTag "i" ]
+def i			[ newInlineTag "i" ]
 def iframe		[ newTag "iframe" ]
 def img			[ newEmptyTag "img" ]
 def input		[ newEmptyTag "input" ]
@@ -47,7 +47,7 @@ def ins			[ newTag "ins" ]
 def kbd			[ newTag "kbd" ]
 def label		[ newTag "label" ]
 def legend		[ newTag "legend" ]
-def li			[ newTag "li" ]
+def li			[ newInlineTag "li" ]
 def link		[ newEmptyTag "link" ]
 def 'map			[ newTag "map" ]
 def meta		[ newEmptyTag "meta" ]
@@ -56,56 +56,46 @@ def noscript	[ newTag "noscript" ]
 def object		[ newTag "object" ]
 def ol			[ newTag "ol" ]
 def optgroup	[ newTag "optgroup" ]
-def option		[ newTag "option" ]
-def p			[ newTag "p" ]
+def option		[ newInlineTag "option" ]
+def p			[ newInlineTag "p" ]
 def param		[ newEmptyTag "param" ]
 def pre			[ newTag "pre" ]
-def q			[ newTag "q" ]
+def q			[ newInlineTag "q" ]
 def samp		[ newTag "samp" ]
 def script		[ newTag "script" ]
 def select		[ newTag "select" ]
-def small		[ newTag "small" ]
-def span		[ newTag "span" ]
-def strong		[ newTag "strong" ]
+def small		[ newInlineTag "small" ]
+def span		[ newInlineTag "span" ]
+def strong		[ newInlineTag "strong" ]
 def style		[ newTag "style" ]
-def sub			[ newTag "sub" ]
-def sup			[ newTag "sup" ]
+def sub			[ newInlineTag "sub" ]
+def sup			[ newInlineTag "sup" ]
 def table		[ newTag "table" ]
 def tbody		[ newTag "tbody" ]
 def td			[ newTag "td" ]
-def textarea	[ newTag "textarea" ]
+def textarea	[ newInlineTag "textarea" ]
 def tfoot		[ newTag "tfoot" ]
-def th			[ newTag "th" ]
+def th			[ newInlineTag "th" ]
 def thead		[ newTag "thead" ]
-def title		[ newTag "title" ]
+def title		[ newInlineTag "title" ]
 def tr			[ newTag "tr" ]
-def tt			[ newTag "tt" ]
+def tt			[ newInlineTag "tt" ]
 def ul			[ newTag "ul" ]
 def var			[ newTag "var" ]
+
+-- HTML comments...
+def <!-- [
+	assembleComment
+	"<!-- "
+	renderContent
+	swap " -->"
+]
 
 -- these two functions will be masked by the above definitions
 def Map 'map
 def Head 'head
 
--- General HTML generation...
-
--- TEST [ newTag "div" [ [id "blah"] [class "abc"] ] ]   "<html></html>"  "newTag with attrs"
--- TEST [ newTag "html" [] ]   "<html></html>"  "newTag"
---TEST [ newTag "a" [key "value"] [ "contents" ] ]
-
-
---newTag "div" [ id="myDiv" newTag "p" ["contents"] ]
--- newTag "a" [href="#" ; newTag "p" ["content"] ]
-
--- fold [
-	-- prepend dip 'swap times 2 'prepend
-	-- " " dip [show uncons] show
--- ]
--- "" [key="value" a="b"]
-
--- newTag "p" newTag "a" [href="#" "cheese"]
--- newTag "a" [href="#" "contents" ]
---TEST [ newTag "tr" [ newTag "td" '"contents" ] ] "<tr><td>contents</td></tr>"  "newTag nested"
+-- test suite.
 TEST [ newEmptyTag "br" [class="a"] ] `<br class="a" />` "newEmptyTag"
 TEST [ newTag "a" [href="#" "contents" ] ] `<a href="#">contents</a>` "newTag"
 TEST [ renderOpenTag "td"  ]   "<td"    "renderOpenTag"
@@ -132,8 +122,11 @@ def newEmptyTag [ -- "id 'attrs 'content
 	exhume 2 dig 2 '*null
 	dip [ partitionAttrs [] ]
 ]
-def newTag [ -- "tag" 'content
-	assembleTag
+def newInlineTag [
+	assembleInlineTag _newTag
+]
+def newTag [ assembleTag _newTag ]
+def _newTag [ -- "tag" 'content
 	times 2 'prepend
 	renderOpenTag
 	bury 2 ">"
@@ -178,10 +171,25 @@ def identifyAttr [
 	*null 
 ]
 
-def assembleTag [
+def assembleComment [
 	doif
-		[assembleTag prepend]
+		[assembleComment prepend]
 		'prepend
+	swap dip [!= " -->" *take 4 ] -- dip 'drop splitAt 2 dup]
+]
+def assembleInlineTag [
+	doif
+		[assembleInlineTag prepend]
+		'prepend
+	swap dip [!= "</" *take 2 ] -- dip 'drop splitAt 2 dup]
+]
+def assembleTag [
+	_assembleTag quote
+]
+def _assembleTag [
+	doif
+		[_assembleTag prepend dip 'quote] 
+		[prepend dip 'quote ]
 	swap dip [!= "</" *take 2 ] -- dip 'drop splitAt 2 dup]
 ]
 

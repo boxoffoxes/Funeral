@@ -1,33 +1,6 @@
 -- vim:filetype=funeral
--- def head [ dip 'drop uncons ]
--- def tail [ drop uncons ]
--- 
--- def test [ dip [ ifte "ok" "failed" = apply ] ]
--- 
--- def concat [ fold [append swap] [] ]
--- 
--- 
--- 
--- TEST [ cons dip 'cons partition [ = 0 % 2 ] [1 2 3 4] [] ]
-	 -- [ [2 4] [1 3] ]  "partition"
 
--- def partition [ -- 'f [list]
-	-- doif
-		-- [ drop dig 3 'drop ]
-		-- [
-			-- doif
-				-- [ dip   [cons exhume 2] ] -- 'f [t] [] [sil]
-				-- [ dig 2 [cons swap]     ] -- 'f [] [t] [sil]
-			-- swap *apply         		  -- b 'f [] [] t [sil]
-			-- dip   [exhume 2]    		  -- 'f t [] [] t [sil]
-			-- dig 3 [dup uncons]  		  -- 'f [] [] t t [sil]
-		-- ]
-	-- exhume 3 dig 3 '*null 				  -- False 'f [] [] [tsil]
-	-- dip [ [] [] reverse ] 				  -- 'f [] [] [tsil]
--- ]
-
--- case [ 1 'f1  2 'f2  3 'f3 ... 'else ]
---def case []
+def TEST [ times 3 'drop ]
 
 def overlay [ -- [dict1] [dict2] // merge two dicts, replacing values in [dict2] with those from [dict1]
     drop
@@ -84,6 +57,9 @@ def pair [  -- key val -> [key val]
 
 def *isString [ isString dup ]
 def concat [ fold 'append [] ]
+
+def intersperse [ -- "str" [list]
+]
 
 def prepend [ append swap ]
 

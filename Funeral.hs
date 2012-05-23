@@ -127,9 +127,15 @@ parseQuot = token $ pure Quot <*> quo
 parseExpr :: Parser Expr
 parseExpr = parseComment <|> parseBool <|> parseChar <|> parseNumber <|> parseQuot {- <|> parsePair -} <|> parseString <|> parseWord
 
+stripComments :: [Expr] -> [Expr]
+stripComments (Comm _:es) = stripComments es
+stripComments (Quot qs:es) = Quot (stripComments qs):stripComments es
+stripComments (e:es) = e : stripComments es
+stripComments [] = []
+
 parse :: String -> [Expr]
 parse s = case junk of
-    ""        -> exps
+    ""        -> stripComments exps
     otherwise -> error ("Parse error in '" ++ take 30 junk ++ "...'\n")
     where
         (junk, exps) = head $ maybeSome parseExpr s

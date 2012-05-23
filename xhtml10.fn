@@ -45,7 +45,7 @@ def img			[ newEmptyTag "img" ]
 def input		[ newEmptyTag "input" ]
 def ins			[ newTag "ins" ]
 def kbd			[ newTag "kbd" ]
-def label		[ newTag "label" ]
+def label		[ newInlineTag "label" ]
 def legend		[ newTag "legend" ]
 def li			[ newInlineTag "li" ]
 def link		[ newEmptyTag "link" ]
@@ -184,18 +184,17 @@ def assembleInlineTag [
 	swap dip [!= "</" *take 2 ] -- dip 'drop splitAt 2 dup]
 ]
 def assembleTag [
-	_assembleTag quote
-]
-def _assembleTag [
 	doif
-		[_assembleTag prepend dip 'quote] 
-		[prepend dip 'quote ]
+		[assembleTag prepend append "
+"] 
+		[prepend append "
+"]
 	swap dip [!= "</" *take 2 ] -- dip 'drop splitAt 2 dup]
 ]
 
 -- Define these to do nothing so they can be used to make our
 -- small HTML-writing DSL more readable...
 def ; []
-def , []
+def , [chunder "you left a comma!"]
 
 -- vim:filetype=funeral

@@ -1,25 +1,15 @@
 --def submit [ _input "submit" ]
 
+-- text [ name="c" ]
+-- file [ name="a" label="test" ]
+-- checkbox [ name="d" label="click" ]
+
+tocEntry "I like cheese"
+
+def page [ prepend pageHeader append pageFooter ]
+
 def tabHeading [ h1 ]
 def tab [ div prepend [class="section"] ]
-def db_list [ _label_before _select  ]
-def list [ _label_before _select ]
-
-def _select [
-    select
-    prepend concat
-    copyTo id= name=
-    delete label=
-    bury 2 quote
-    snd *lookup label=
-    partitionAttrs []
-]
-
-def page [
-	pageHeader
-	renderContent
-	swap pageFooter 
-]
 
 def checkbox [ _label_after _input "checkbox" ]
 def radio    [ _label_after _input "radio" ]
@@ -30,36 +20,55 @@ def text     [ _label_before _input "text" ]
 def submit   [ _label_before _input "submit"]
 def hidden   [ _no_label     _input "hidden"]
 
-def _input [
-    prepend
-    input
-    swap []
-    concat
+def smart_list  [ _label_before _select ]
+def list        [ _label_before _select ]
+def 'textarea   [ _label_before _textarea ]
+
+def _textarea [ textarea _prepare_field ]
+def _select   [ select   _prepare_field ]
+def _input    [ input    _prepare_field prepend pair type= ]
+
+def _prepare_field [
+    prepend concat
     copyTo id= name=
-    partitionAttrs [] 
-    prepend pair type=
+    delete label=
+    bury 2 doif 
+        []
+        'quote
+    *null
+    safeSnd *lookup label=
+    partitionAttrs []
 ]
 
 def _no_label [
     dip 'drop
 ]
-def _label_after [
-    doif -- create an optional label after the input (radio, checkbox...)
-        [ dip 'drop ]
-        [ label cons ]
-    swap dip '*null
-]
-def _label_before [
+def _label_before [ doif 'drop [] *null swap dip '_label ]
+def _label_after [ dip [doif 'drop [] *null _label ] ]
+def _label [
     doif -- create an optional label before the input (text, file...)
-        [ dip 'drop ]
-        [ label append quote ]
-    swap dip '*null
+        []
+        'label
+    *null
 ]
 
 def uniStatusList [
 	option "Awarded"
 	option "Pending award"
 	option "Exam to be taken"
+]
+
+def safeSnd [
+    doif
+        'snd
+        []
+    *isPair
+]
+
+def _TOC '[]
+
+def tocEntry [
+    def '_TOC append _TOC
 ]
 
 

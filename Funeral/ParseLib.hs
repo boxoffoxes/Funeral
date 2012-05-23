@@ -32,7 +32,6 @@ pFst p = pure (\(a, b) -> a) <*> p
 pSnd :: Parser (a, b) -> Parser b
 pSnd p = pure (\(a, b) -> b) <*> p
 
-
 anyChar :: Parser Char
 anyChar "" = []
 anyChar (c:s) = [(s, c)]

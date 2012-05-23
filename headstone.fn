@@ -38,14 +38,19 @@ def _pairFstMatch [ -- key [pair] // returns a quoted search function.
 ]
 
 def *snd [ snd dup ]
-def snd [ head tail ] -- [key val]
+def snd [ -- [key val]
+	doif 
+		[head tail]
+		[croak "snd called on non-pair value"] 
+	*isPair
+]
 def *fst [ snd dup ]
 def fst [ head ] -- [key val]
 
 def break [
     doif
         [ dig 2 'drop for 2 'uncons ]
-        [error "break called on a non-pair value."]
+        [croak "break called on a non-pair value."]
     *isPair
 ]
 def *isPair [ isPair dup ]
@@ -162,10 +167,15 @@ def *tail [ tail dup ]
 def tail [ drop uncons ]
 
 def *head [ head dup ]
-def head [ dip 'drop uncons ]
+def head [ drop popDown ]
 
 def *take [ dip 'drop splitAt dip 'dup ]
 def take [ dip 'drop splitAt ]
+
+def popDown  [swap uncons] -- [list] -> [ist] .l
+def pushOnto [cons swap]   -- [ist] .l -> [list]
+
+def IGNORE 'drop
 
 def dip [ dig 1 ]
 def *uncons [ uncons dup ]

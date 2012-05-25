@@ -11,18 +11,37 @@ def page [ prepend pageHeader append pageFooter ]
 def tabHeading [ h1 ]
 def tab [ div prepend [class="section"] ]
 
+def mandatory [ div prepend [class="required" ] ]
+
+def checkbox* [ checkbox required ]
+def file*    [ file required ]
+def date*    [ date required prepend [class="dateField"] ]
+def text*    [ text required ]
+
 def checkbox [ _label_after _input "checkbox" ]
 def radio    [ _label_after _input "radio" ]
 
-def file     [ _label_before _input "file" ]
-def date     [ _label_before _input "text" prepend [class="dateField"] ]
-def text     [ _label_before _input "text" ]
-def submit   [ _label_before _input "submit"]
-def hidden   [ _no_label     _input "hidden"]
+def smart_list*  [ smart_list required ]
+def list*        [ list required ]
+def textarea*   [ textarea required ]
 
-def smart_list  [ _label_before _select ]
-def list        [ _label_before _select ]
-def 'textarea   [ _label_before _textarea ]
+def required [
+    prepend concat
+    set label=
+    prepend span [class="required" ; " * "]
+    safeSnd *lookup label=
+    partitionAttrs []
+]
+
+def file     [ div _label_before _input "file" ]
+def date     [ div _label_before _input "text" prepend [class="dateField"] ]
+def text     [ div _label_before _input "text" ]
+def submit   [ div _label_before _input "submit"]
+def hidden   [ div _no_label     _input "hidden"]
+
+def smart_list  [ div _label_before _select ]
+def list        [ div _label_before _select ]
+def 'textarea   [ div _label_before _textarea ]
 
 def _textarea [ textarea _prepare_field ]
 def _select   [ select   _prepare_field ]
@@ -43,8 +62,8 @@ def _prepare_field [
 def _no_label [
     dip 'drop
 ]
-def _label_before [ doif 'drop [] *null swap dip '_label ]
-def _label_after [ dip [doif 'drop [] *null _label ] ]
+def _label_before [ append dip '_label ]
+def _label_after [ prepend dip '_label ]
 def _label [
     doif -- create an optional label before the input (text, file...)
         []

@@ -422,7 +422,7 @@ showAst st = concat $ intersperse "\n" $ map show st
 main :: IO ()
 main = do
     args <- getArgs
-    sources <- mapM readFile (args ++ ["headstone.fn"])
+    sources <- mapM readFile (args ++ ["lib/headstone.fn"])
     let prog = ( parse $ concat sources )
     let result = showAst $ snd $ descend (prims, prog)
     putStrLn result

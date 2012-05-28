@@ -49,12 +49,9 @@ instance Show Expr where
     show (Bool b) = show b
     -- show (Pair a b) = "(" ++ show a ++ " " ++ show b ++ ")"
     show (Chr c) = '.':c:[]
-    show (Quot es) = case all typeIsChar es of
+    show (Quot es) = case all isChar es of
             True  -> show ( map (\(Chr c) -> c) es )
             False -> "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
-        where
-            typeIsChar (Chr _) = True
-            typeIsChar _       = False
     show (Fun id _) = "<prim:" ++ id ++ ">"
     -- show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
@@ -287,10 +284,17 @@ fnType st = barf st "type must be called on a quoted value."
 
 fnIsString :: Prog -> Prog
 fnIsString (Quot es:st)     = if all isChar es then Bool True:st else Bool False:st
-	where
-		isChar (Chr _) = True
-		isChar _ = False
 fnIsString (e:st) = Bool False:st
+
+fnWordToString :: Prog -> Prog
+fnWordToString (Word w:st) = strToQuote w:st
+fnWordToString (Quot [Word w]:st) = strToQuote w:st
+fnWordToString st = barf st "wordToString requires either a word or a quoted word argument."
+
+fnStringToWord :: Prog -> Prog
+fnStringToWord (Quot es:st)
+	| all isChar es = Word (map (\(Chr c) -> c) es):st
+fnStringToWord st = barf st "stringToWord only accepts string argument."
 
 miscFunctions = [
     ( "show",     promoteProgFn $ fnShow ),
@@ -299,6 +303,8 @@ miscFunctions = [
     ( "traceAll", promoteProgFn $ fnTraceAll ),
 	( "isString", promoteProgFn $ fnIsString ),
     ( "type",     promoteProgFn $ fnType ),
+	( "stringToWord", promoteProgFn $ fnStringToWord ),
+	( "wordToString", promoteProgFn $ fnWordToString ),
     ( "croak",    promoteProgFn $ fnError ) ]
 
 -- State -> State functions
@@ -346,6 +352,8 @@ fnEval (l, e:st)       = (l, e:st)
 
 
 -- utility functions
+isChar (Chr _) = True
+isChar _ = False
 
 getContext :: Id -> Library -> Library
 getContext w l = dropWhile notMyDef l

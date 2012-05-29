@@ -4,17 +4,41 @@
 -- file [ name="a" label="test" ]
 -- checkbox [ name="d" label="click" ]
 
-tocEntry "Beware of the Hamster"
-tocEntry "I like cheese"
-
 def page [ prepend pageHeader append pageFooter ]
 
-def tabHeading [ h1 ]
+def subsubsection [
+    div prepend [class="subsubsection"]
+    prepend concat
+    delete heading=
+    doif
+        'drop
+        [ dip 'cons swap h3 ]
+    *null
+    safeSnd *lookup heading=
+    partitionAttrs []
+]
+def subsection [
+    div prepend [class="subsection"]
+    prepend concat
+    delete heading=
+    doif
+        [drop]
+        [ dip 'cons swap h2 ]
+    *null
+    safeSnd *lookup heading=
+    partitionAttrs []
+]
+
 def section [
     div prepend [class="section"]
+    prepend concat
+    delete heading=
     doif
-        []
-        []
+        [drop]
+        [
+            tocEntry li a prepend [href="#"]
+            dig 2 'cons bury 2 h1 dup
+        ]
     *null
     safeSnd *lookup heading=
     partitionAttrs []
@@ -34,7 +58,7 @@ def smart_list*  [ smart_list mandatory ]
 def list*        [ list mandatory ]
 def textarea*   [ textarea mandatory ]
 
-def fld [ div prepend [class="formField"] ]
+def fld [ div prepend pair class= prepend "formField " alternate ]
 
 def file     [ _label_before _input "file" ]
 def date     [ _label_before _input "text" prepend [class="dateField"] ]
@@ -88,22 +112,32 @@ def _no_label [
 def _label_before [ append dip '_label ]
 def _label_after [ prepend dip '_label ]
 def _label [
-    doif -- create an optional label before the input (text, file...)
+    doif -- create an optional label for an input (text, file...)
         []
         'label
     *null
 ]
 
 def _options [
-   [] 
+    prepend [ option [ value="" "--- Select" ] ]
+    doif
+        [[] drop]
+        []
+    = "word" type quote dup
+    stringToWord *getAttr name=
 ]
 
-
-def uniStatusList [
-	option "Awarded"
-	option "Pending award"
-	option "Exam to be taken"
+def *getAttr [
+    getAttr dip 'dup
 ]
+def getAttr [
+    safeSnd lookup 
+    dip [
+        dip 'drop
+        partitionAttrs []
+    ]
+]
+
 
 def safeSnd [
     doif
@@ -117,6 +151,17 @@ def _TOC '[]
 def tocEntry [
     def '_TOC quote append _TOC
 ]
+
+def _alt ["odd"]
+
+def alternate [
+    def '_alt quote
+    ifte
+        "evenRow"
+        "oddRow"
+    = "oddRow" dup _alt
+]
+
 
 
 -- vim:et:filetype=funeral:

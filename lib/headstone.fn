@@ -179,3 +179,4 @@ def IGNORE 'drop
 
 def dip [ dig 1 ]
 def *uncons [ uncons dup ]
+def *type [type dup]

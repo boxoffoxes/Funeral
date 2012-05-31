@@ -36,7 +36,8 @@ def section [
     doif
         [drop]
         [
-            tocEntry li a prepend [href="#"]
+            tocEntry li a prepend pair href= cons .# swap
+            dip [ safeSnd *lookup id= ]
             dig 2 'cons bury 2 h1 dup
         ]
     *null
@@ -75,15 +76,7 @@ def _select   [ select   _prepare_field ]
 def _input    [ input    _prepare_field prepend pair type= ]
 
 def advice [
-    prepend concat
-    set label=
-    append 
-    dip [
-        safeSnd *lookup label=
-        partitionAttrs []
-    ]
     span prepend [class="advice"]
-    swap
 ]
 
 def mandatory [

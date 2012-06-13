@@ -120,24 +120,6 @@ def _options [
     stringToWord *getAttr name=
 ]
 
-def *getAttr [
-    getAttr dip 'dup
-]
-def getAttr [
-    safeSnd lookup 
-    dip [
-        dip 'drop
-        partitionAttrs []
-    ]
-]
-
-
-def safeSnd [
-    doif
-        'snd
-        []
-    *isPair
-]
 
 def _TOC '[]
 

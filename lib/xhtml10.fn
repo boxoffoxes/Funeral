@@ -109,6 +109,10 @@ TEST [ renderCloseTag "x" ]   "</x>"  "renderCloseTag"
 TEST [ cons dip 'cons partitionAttrs [] [ a="1" b="2" head d e ] [] ] 
     [ [[b= "2"] [a= "1"]] [head d e] ] "partitionAttrs containing defined word"
 
+
+-------------------------------------------------
+-- Tag generation
+
 def newEmptyTag [ -- "id 'attrs 'content
 	doif
 		[
@@ -132,7 +136,7 @@ def _newTag [ -- "tag" 'content
 	bury 2 ">"
 	dip [
 		renderAttrs
-		dip [renderContent ]
+		dip 'renderContent
 		partitionAttrs []
 	]
 	bury 2 renderCloseTag dup
@@ -149,6 +153,74 @@ def renderAttrs    [
 ]
 def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
+
+----------------------------------------------------------
+-- Attribute management functions
+
+def addClass [ -- "class" tagContents
+	-- if class= is not set then set it, otherwise prepend to it.
+	setAttr class=
+	prepend
+	dip [
+		doif
+			[]
+			[cons . ] -- beware! space character!
+		*null
+		*getAttr class=
+	]
+]
+def copyAttrTo [ -- dest src
+	prepend concat
+	copyTo
+	dig 2 [ partitionAttrs [] ]
+]
+def setDefault [
+	-- If attr is defined, leave the existing value, otherwise set to
+	-- a default value.
+	prepend concat
+	doif
+		'setAttr     -- if null set to default
+		[drop drop]  -- otherwise drop the default key and value
+	null exhume 2
+	dig 2 [ *lookup ] 	-- non-destructively look-up our buried key
+	dig 3 [ partitionAttrs [] ]
+	bury 2 dup 			-- duplicate the key and bury it
+]
+
+def setAttr [
+	prepend concat
+	set
+	dig 2 [
+		partitionAttrs []
+	]
+]
+
+def deleteAttr [
+	prepend concat
+	delete
+	dip [
+		partitionAttrs []
+	]
+]
+
+def *getAttr [
+    getAttr dip 'dup
+]
+def getAttr [
+    safeSnd lookup 
+    dip [
+        dip 'drop
+        partitionAttrs []
+    ]
+]
+
+def safeSnd [
+    doif
+        'snd
+        []
+    *isPair
+]
+
 def partitionAttrs [ -- [] [content]
 	doif
 		[partitionAttrs set bury 2 dip [ for 2 'uncons] ]
@@ -156,9 +228,8 @@ def partitionAttrs [ -- [] [content]
 	swap dip 'identifyAttr
 ]
 
+
 def identifyAttr [
-    -- if any of the words being examined with *head are 
-    -- defined they will be evaluated as soon as 
 	doif
 		[= .= head reverse show *head] 
 		'False
@@ -170,6 +241,8 @@ def identifyAttr [
 		[= "word" type *take 1]
 	*null 
 ]
+
+-- Comment handling
 
 def assembleComment [
 	doif

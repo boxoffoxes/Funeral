@@ -2,7 +2,7 @@
 
 def TEST [ times 3 'drop ]
 
-def overlay [ -- [dict1] [dict2] // merge two dicts, replacing values in [dict2] with those from [dict1]
+def merge [ -- [dict1] [dict2] // merge two dicts, replacing values in [dict2] with those from [dict1]
     drop
     times swap [ dip [set break] swap uncons ] *length 
 ]

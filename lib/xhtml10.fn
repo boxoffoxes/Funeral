@@ -1,7 +1,7 @@
 def !DOCTYPE	[ `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
-   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">` ]
-def html		[ newTag "html" prepend [ xmlns="http://www.w3.org/1999/xhtml"] ]
---def html		[ newTag "html" ]
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+` ]
+def html		[ newTag "html" setDefault xmlns="http://www.w3.org/1999/xhtml" ]
 def a			[ newInlineTag "a" ]
 def abbr		[ newTag "abbr" ]
 def acronym		[ newInlineTag "acronym" ]
@@ -73,7 +73,7 @@ def sup			[ newInlineTag "sup" ]
 def table		[ newTag "table" ]
 def tbody		[ newTag "tbody" ]
 def td			[ newTag "td" ]
-def textarea	[ newInlineTag "textarea" prepend [ rows="5" columns="20" ] ]
+def textarea	[ newInlineTag "textarea" setDefault rows="5" setDefault columns="20" ]
 def tfoot		[ newTag "tfoot" ]
 def th			[ newInlineTag "th" ]
 def thead		[ newTag "thead" ]
@@ -155,6 +155,20 @@ def renderCloseTag [ times 2 'prepend "</" swap ">"]
 
 
 ----------------------------------------------------------
+-- Content manipulation functions
+
+
+def appendContent [ append quote ]
+
+def prependContent [
+	prepend concat
+	dip 'cons
+	swap
+	dip [partitionAttrs []]
+]
+
+
+----------------------------------------------------------
 -- Attribute management functions
 
 def addClass [ -- "class" tagContents
@@ -164,7 +178,7 @@ def addClass [ -- "class" tagContents
 	dip [
 		doif
 			[]
-			[cons . ] -- beware! space character!
+			[cons . ] -- beware! literal space character!
 		*null
 		*getAttr class=
 	]
@@ -174,12 +188,12 @@ def copyAttrTo [ -- dest src
 	copyTo
 	dig 2 [ partitionAttrs [] ]
 ]
-def setDefault [
+def setDefault [ -- key= val [attrs ; content]
 	-- If attr is defined, leave the existing value, otherwise set to
 	-- a default value.
 	prepend concat
 	doif
-		'setAttr     -- if null set to default
+		'set         -- if null set to default
 		[drop drop]  -- otherwise drop the default key and value
 	null exhume 2
 	dig 2 [ *lookup ] 	-- non-destructively look-up our buried key
@@ -242,7 +256,7 @@ def identifyAttr [
 	*null 
 ]
 
--- Comment handling
+-- Tag and comment handling
 
 def assembleComment [
 	doif

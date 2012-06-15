@@ -7,7 +7,6 @@ def guess_value_from_name [
 ]
 
 
-
 def _auto_value [
 	doif
 		[[] drop]

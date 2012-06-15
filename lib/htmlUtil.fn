@@ -7,43 +7,55 @@
 def page [ prepend pageHeader append pageFooter ]
 
 def subsubsection [
-    div prepend [class="subsubsection"]
-    prepend concat
-    delete heading=
+    div addClass "subsubsection"
+    deleteAttr heading=
     doif
         'drop
-        [ dip 'cons swap h3 ]
+        [ prependContent h3 ]
     *null
-    safeSnd *lookup heading=
-    partitionAttrs []
+    *getAttr heading=
 ]
 def subsection [
-    div prepend [class="subsection"]
-    prepend concat
-    delete heading=
+    div addClass "subsection"
+    deleteAttr heading=
     doif
-        [drop]
-        [ dip 'cons swap h2 ]
+        'drop
+        [ prependContent h2 ]
     *null
-    safeSnd *lookup heading=
-    partitionAttrs []
+    *getAttr heading=
 ]
 
 def section [
-    div prepend [class="section"]
-    prepend concat
-    delete heading=
+    div addClass "section"
+    deleteAttr heading=
     doif
-        [drop]
+        'drop
         [
-            tocEntry li a prepend pair href= cons .# swap
-            dip [ safeSnd *lookup id= ]
-            dig 2 'cons bury 2 h1 dup
+            tocEntry li a
+            setAttr href= 
+            swap dip [
+                cons .# *getAttr id= 
+                prependContent h1
+            ] dup
         ]
     *null
-    safeSnd *lookup heading=
-    partitionAttrs []
+    *getAttr heading=
 ]
+--def section [
+    --div prepend [class="section"]
+    --prepend concat
+    --delete heading=
+    --doif
+        --[drop]
+        --[
+            --tocEntry li a prepend pair href= cons .# swap
+            --dip [ safeSnd *lookup id= ]
+            --dig 2 'cons bury 2 h1 dup
+        --]
+    --*null
+    --safeSnd *lookup heading=
+    --partitionAttrs []
+--]
 
 -- def mandatory [ div prepend [class="required" ] ]
 
@@ -59,10 +71,10 @@ def smart_list*  [ smart_list mandatory ]
 def list*        [ list mandatory ]
 def textarea*   [ textarea mandatory ]
 
-def fld [ div prepend pair class= prepend "formField " alternate ]
+def fld [ div addClass prepend "formField " alternate ]
 
 def file     [ _label_before _input "file" ]
-def date     [ _label_before _input "text" prepend [class="dateField"] ]
+def date     [ _label_before _input "text" addClass "dateField" ]
 def text     [ _label_before _input "text" ]
 def submit   [ _label_before _input "submit"]
 def hidden   [ _no_label _input "hidden"]
@@ -73,31 +85,39 @@ def 'textarea   [ _label_before _textarea ]
 
 def _textarea [ textarea _prepare_field ]
 def _select   [ select   _prepare_field ]
-def _input    [ input    _prepare_field prepend pair type= ]
+def _input    [ input    _prepare_field setAttr type= ]
 
 def advice [
-    span prepend [class="advice"]
+    span addClass "advice"
 ]
 
 def mandatory [
-    prepend concat
-    set label=
+    addClass "required"
+    setAttr label=
     prepend span [class="required" ; " * "]
-    safeSnd *lookup label=
-    partitionAttrs []
+    *getAttr label=
 ]
 
 def _prepare_field [
-    prepend concat
-    copyTo id= name=
-    delete label=
-    bury 2 doif 
+    copyAttrTo id= name=
+    deleteAttr label=
+    swap doif 
         []
         'quote
     *null
-    safeSnd *lookup label=
-    partitionAttrs []
+    *getAttr label=
 ]
+-- def _prepare_field [
+    -- prepend concat
+    -- copyTo id= name=
+    -- delete label=
+    -- bury 2 doif 
+        -- []
+        -- 'quote
+    -- *null
+    -- safeSnd *lookup label=
+    -- partitionAttrs []
+-- ]
 
 def _no_label [
     dip 'drop
@@ -112,13 +132,14 @@ def _label [
 ]
 
 def _options [
-    prepend [ option [ value="" "--- Select" ] ]
+    cons blankOption
     doif
         [[] drop]
         []
     = "word" type quote dup
     stringToWord *getAttr name=
 ]
+def blankOption quote option [ value="" "--- Select" ]
 
 
 def _TOC '[]
@@ -127,7 +148,7 @@ def tocEntry [
     def '_TOC quote append _TOC
 ]
 
-def _alt ["odd"]
+def _alt ["oddRow"]
 
 def alternate [
     def '_alt quote
@@ -136,6 +157,7 @@ def alternate [
         "oddRow"
     = "oddRow" dup _alt
 ]
+
 
 
 

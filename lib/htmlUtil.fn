@@ -71,7 +71,7 @@ def smart_list*  [ smart_list mandatory ]
 def list*        [ list mandatory ]
 def textarea*   [ textarea mandatory ]
 
-def fld [ div addClass prepend "formField " alternate ]
+def fld [ div appendContent span [class="errorMessage"] addClass prepend "formField " alternate ]
 
 def file     [ _label_before _input "file" ]
 def date     [ _label_before _input "text" addClass "dateField" ]

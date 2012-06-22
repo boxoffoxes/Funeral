@@ -158,7 +158,12 @@ def renderCloseTag [ times 2 'prepend "</" swap ">"]
 -- Content manipulation functions
 
 
-def appendContent [ append quote ]
+def appendContent [
+	doif
+		'append
+		[append quote]
+	swap dip '*isString
+]
 
 def prependContent [
 	prepend concat
@@ -236,6 +241,13 @@ def safeSnd [
 ]
 
 def partitionAttrs [ -- [] [content]
+	dip [ -- Make sure non-null strings are always quoted
+		doif
+			'quote
+			[]
+		and dip '*isString
+		not *null
+	]
 	doif
 		[partitionAttrs set bury 2 dip [ for 2 'uncons] ]
 		[]

@@ -429,6 +429,7 @@ showAst st = concat $ intersperse "\n" $ map show st
 
 main :: IO ()
 main = do
+	-- hSetEncoding stderr utf8
     args <- getArgs
     sources <- mapM readFile (args ++ ["lib/headstone.fn"])
     let prog = ( parse $ concat sources )

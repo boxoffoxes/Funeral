@@ -59,6 +59,10 @@ def section [
 
 -- def mandatory [ div prepend [class="required" ] ]
 
+-- guessValue is defined above its use in _input so that its rather
+---  primitive default implementation can be over-ridden by the user.
+def guessValue [ "" ]
+
 def checkbox* [ checkbox mandatory ]
 def file*    [ file mandatory ]
 def date*    [ date mandatory ]
@@ -86,7 +90,7 @@ def 'textarea   [ _label_before _textarea ]
 
 def _textarea [ textarea _prepare_field ]
 def _select   [ select   _prepare_field ]
-def _input    [ input    _prepare_field setAttr type= ]
+def _input    [ input    _prepare_field setDefault value= guessValue setAttr type= ]
 
 def advice [
     span addClass "advice"

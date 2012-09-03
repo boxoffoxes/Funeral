@@ -88,7 +88,7 @@ def smart_list  [ _label_before _select append _options ]
 def list        [ _label_before _select ]
 def 'textarea   [ _label_before _textarea ]
 
-def _textarea [ textarea _prepare_field ]
+def _textarea [ textarea _prepare_field append quote guessValue ]
 def _select   [ select   _prepare_field ]
 def _input    [ input    _prepare_field setDefault value= guessValue setAttr type= ]
 
@@ -137,14 +137,14 @@ def _label [
 ]
 
 def _options [
-    cons blankOption
+    -- cons blankOption
     doif
         [[] drop]
         []
     = "word" type quote dup
     stringToWord *getAttr name=
 ]
-def blankOption quote option [ value="" "--- Select" ]
+def blankOption quote option [ value="" "--- Please select an option ---" ]
 
 
 def _TOC '[]

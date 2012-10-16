@@ -86,24 +86,76 @@
 ;		 (newline)
 ;		 (loop (p)))
 ;		))))
-	
+
 (define forth-grammar
-	(regular-grammar ()
-					 ((+ (out blank)) (the-string))
+	(regular-grammar ((word (+ (out blank)))
+					  (number (+ digit)))
+					 (number (cons 'int (the-fixnum)))
+					 ("[]" '())
+					 ;("]" '())
+					 ;("[" (let* ((head (ignore))
+								 ;(tail (ignore)))
+							;(cons 'quo (cons head tail))))
+					 (word (cons 'sym (the-string)))
 					 ((+ blank) (ignore))
-					 (else (quit))))
+					 (else (the-failure))))
+
+; (define (parse port)
+  ; (let ((p (lambda () (read/rp forth-grammar port))))
+	; (let loop ((found (p)))
+	  ; ;(print found)
+	  ; (if (eof-object? found)
+		; '()
+		; (cons found (loop (p))) ))))
+
+(define (comp n)
+  (let loop ((i n))
+	(if (= i 0)
+	  '()
+	  (cons i (loop (- i 1))))))
+
+
+(define (parser port)
+  (lambda () (read/rp forth-grammar port)))
+
+(define (parse p)
+  (let ((word (p)))
+	(if (eof-object? word)
+	  '()
+	  (cons word (parse p)))))
+
+(define (parse-string str)
+  (let ((port (open-input-string str)))
+	(parse (parser port))))
+
+; (label . defn)
+
+(define prim 
+  '(("[" . start-list)
+	("]" . end-list)
+	))
+
+(define (lookup sym)
+  (if (= sym '(sym . paired))
+	'cons
+	sym))
 
 
 (define (main argv)
-;  (let ((port (open-input-string "hello world")))
-  (let ((port (current-input-port)))
-	(let ((p    (lambda () (read/rp forth-grammar port))))
-	  (let loop ((found (p)))
-	    (if (eof-object? found)
-	  	  (exit)
-		  ((print found)
-		  (loop (p)
-				)))))))
+  (print (parse-string "[] 1 paired 2 paired 3 paired 4 paired 5 paired num defined ; [] var paired + paired addNum defined ; 3 addVar print")))
+
+; [ 1 ... ] comp head head -> 1 2
+; [ 1 .. 10 ] comp 
+
+; [ 1 ... ] head -> [ 2 ... ] 1
+; 
 
 
-
+;(define (pure a)
+  ;(lambda (s) (cons s a)))
+;
+;(define (p-or a b)
+  ;(lambda (s) (take (append (a s) (b s)) 1)))
+;
+;(define (p-tr f a)
+  ;(lambda (s) (

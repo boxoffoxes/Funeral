@@ -3,44 +3,6 @@
 -- text [ name="c" ]
 -- file [ name="a" label="test" ]
 -- checkbox [ name="d" label="click" ]
-
-def page [ prepend pageHeader append pageFooter ]
-
-def subsubsection [
-    div addClass "subsubsection"
-    deleteAttr heading=
-    doif
-        'drop
-        [ prependContent h3 ]
-    *null
-    *getAttr heading=
-]
-def subsection [
-    div addClass "subsection"
-    deleteAttr heading=
-    doif
-        'drop
-        [ prependContent h2 ]
-    *null
-    *getAttr heading=
-]
-
-def section [
-    div addClass "section"
-    deleteAttr heading=
-    doif
-        'drop
-        [
-            tocEntry li a
-            setAttr href= 
-            swap dip [
-                cons .# *getAttr id= 
-                prependContent h1
-            ] dup
-        ]
-    *null
-    *getAttr heading=
-]
 --def section [
     --div prepend [class="section"]
     --prepend concat
@@ -108,7 +70,11 @@ def _prepare_field [
     deleteAttr label=
     swap doif 
         []
-        'quote
+        [
+            setAttr for=
+            swap dip [ *getAttr name= ]
+            quote
+        ]
     *null
     *getAttr label=
 ]

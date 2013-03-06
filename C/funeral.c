@@ -19,6 +19,7 @@ typedef enum {
     typeChar,
     typeComm,
 	typeNil,
+	typeQuot,
 	typeFun
 } Type;
 
@@ -119,6 +120,7 @@ void primAdd(Stack *s) {
 
 /* Pretty printer */
 
+void showStack(Stack *s); /* pre-declare so we can use it recursively */
 void showCell(Cell *c) {
 	if (c->type == typeInt)
 		printf("%d\n", c->val.n);
@@ -128,7 +130,11 @@ void showCell(Cell *c) {
         printf("\"%s\"\n", c->val.str);
 	else if (c->type == typeChar)
 		printf(".%c\n", c->val.n);
-	else /* word */
+	else if (c->type == typeQuot) {
+		printf("[\n");
+		showStack(c->val.quot);
+		printf("]\n");
+	} else /* word */
 		printf("%s\n", c->val.str);
 }
 
@@ -247,14 +253,22 @@ Cell *consume_string(FILE *fp, char delim) {
 
 	return c;
 }
+Stack *parse(FILE *fp, char terminator); /* pre-declare so we can parse recursively */
+Cell *consume_quotation(FILE *fp, char terminator) {
+	Cell *c = allocCell();
+	Stack *s = parse(fp, terminator);
+	c->type = typeQuot;
+	c->val.quot = s;
+	return c;
+}
 
-Stack *parse(FILE *fp) {
+Stack *parse(FILE *fp, char terminator) {
     int c;
     char cur;
     Cell *cell;
     Stack *st = allocStack();
 
-    while ( (c = fgetc(fp)) != EOF ) {
+    while ( (c = fgetc(fp)) != terminator ) {
         cur = (char) c;
         if (cur <= 32) /* we have a whitespace character */
             continue;
@@ -266,10 +280,13 @@ Stack *parse(FILE *fp) {
                 break;
             case '.':
                 cell = consume_char(fp);
-/*            case '(':
+				break;
+            case '(':
+				cell = consume_quotation(fp, ')');
+				break;
             case '[':
-                cell = consume_quotation(fp);
-                break;*/
+                cell = consume_quotation(fp, ']');
+                break;
             default:
                 ungetc(c, fp);
                 cell = consume_word(fp);
@@ -293,7 +310,7 @@ int main(int argc, char *argv[]) {
 	if (!fp)
 		err(1, "Couldn't open test.fn");
 
-    st = parse(fp);
+    st = parse(fp, EOF);
 
 	showStack(st);
 

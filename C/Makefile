@@ -1,8 +1,8 @@
+CC=clang
+TARGET=funeral
 
-all : funeral funeral-gcc
+$(TARGET) : funeral.c
+	$(CC) -O2 -g -o $@ $<
 
-funeral : funeral.c
-	clang -O2 -g -o $@ $<
-
-funeral-gcc: funeral.c
-	gcc -O2 -g -o $@ $<
+clean:
+	rm -f funeral funeral-gcc

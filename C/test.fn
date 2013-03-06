@@ -9,5 +9,10 @@ div 2 10
 
 add 1 2
 
+.a .b .c
+
+"hello world" 
+"string with \" escape characters"
 eq True False
 
+[ a quotation ]

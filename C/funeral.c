@@ -5,6 +5,10 @@
 
 #define STACK_SIZE 128
 
+/* *************************************************************** */
+/* *** Data structures                                         *** */
+/* *************************************************************** */
+
 struct Stack;
 
 typedef enum {
@@ -28,6 +32,7 @@ typedef union {
 	int n;
 	char *str;
 	Defn *word;
+	struct Stack *quot;
 } Data;
 
 
@@ -41,11 +46,18 @@ typedef struct Cell {
 
 typedef struct Stack {
 	Cell *top;
-	Cell *end;
+	Cell *end; /* we do heavy appending, so a tail-pointer is more than a nice-to-have! */
 } Stack;
+
+
+/* *************************************************************** */
+/* *** Stack manipulation                                      *** */
+/* *************************************************************** */
 
 void push(Stack *s, Cell *word) {
 	word->next = s->top;
+	if ( s->top == NULL ) /* set the tail pointer */
+		s->end = word;
 	s->top = word;
 }
 
@@ -57,7 +69,10 @@ Cell *pop(Stack *s) {
 }
 
 
-/* VM */
+/* *************************************************************** */
+/* *** VM & memory management                                  *** */
+/* *************************************************************** */
+
 
 typedef struct VM {
 	Stack s;
@@ -111,6 +126,8 @@ void showCell(Cell *c) {
 		printf("%s\n", c->val.n == 0 ? "False" : "True");
     else if (c->type == typeStr)
         printf("\"%s\"\n", c->val.str);
+	else if (c->type == typeChar)
+		printf(".%c\n", c->val.n);
 	else /* word */
 		printf("%s\n", c->val.str);
 }
@@ -154,14 +171,10 @@ char *consume_while_true(FILE *fp, pPredicate predicate ) {
 	int ch, len = -1;
 	int pos = ftell(fp);
 
-	printf("pred ret: %d\n", (*predicate)('\n'));
-	printf("pred   x: %d\n", (*predicate)('x'));
 	do {
 		ch = fgetc(fp);
-		printf("char: %d\n", ch);
 		len++;
 	} while ( (*predicate)(ch) );
-	printf("len: %d\n", len);
 	fflush(stdout);
 
 	fseek(fp, pos, SEEK_SET); /* reset fp to the initial position */
@@ -174,8 +187,6 @@ char *consume_while_true(FILE *fp, pPredicate predicate ) {
 
 	buf[len] = '\0'; /* make sure the last byte is null to terminate the string */
 
-	printf("str: \"%s\"\n", buf);
-	
 	return buf;
 }
 
@@ -184,25 +195,18 @@ char *consume_comment(FILE *fp) {
 }
 Cell *consume_word(FILE *fp) {
     Cell *c = allocCell();
-    char ch;
     char *buf, *remainder;
     long pos = ftell(fp);
     int i;
 
-	printf("%p\n", fp);
 	buf = consume_while_true(fp, &pred_not_whitespace);
-	printf("str: \"%s\"\n", buf);
 
     i = strtol(buf, &remainder, 0);
-	printf("num: %d\n", i);
 
 	if (*remainder == '\0') {
-		printf("correct\n");
-		printf("addr: 0x%p\n", buf);
 		c->type = typeInt;
 		c->val.n = i;
         free(buf);
-		printf("ok\n");
 	} else if (strcmp(buf, "True") == 0) {
 		c->type = typeBool;
 		c->val.n = -1;
@@ -218,12 +222,12 @@ Cell *consume_word(FILE *fp) {
 		c->type = typeWord;
 		c->val.str = buf;
 	}
-	printf("ok\n");
     return c;
 }
 Cell *consume_char(FILE *fp) {
+	/* TODO: add basic support for multi-byte UTF-8 chars */
     Cell *c = allocCell();
-    char ch = fgetc(fp);
+    int ch = fgetc(fp);
     if (ch == EOF)
         err(1, "Parse error: expected char literal, but found end of file.");
     c->type = typeChar;
@@ -231,22 +235,21 @@ Cell *consume_char(FILE *fp) {
     return c;
 }
 Cell *consume_string(FILE *fp, char delim) {
-    Cell *c;
-    char ch;
+	/* TODO: conversion to linked list */
+	/* TODO: unescaping of escaped characters */
+    Cell *c = allocCell();
     char *buf;
-    long pos = ftell(fp);
-    int len = 0;
 
-    while ( (ch = fgetc(fp)) != delim ) {
-        if (ch == EOF)
-            err(1, "Reached end of file while looking for matching quote.");
-        len++;
-    }
+	buf = consume_while_true(fp, &pred_double_quoted_string);
+	fgetc(fp); /* discard closing quote */
+	c->type = typeStr;
+	c->val.str = buf;
+
 	return c;
 }
 
 Stack *parse(FILE *fp) {
-    int state, c;
+    int c;
     char cur;
     Cell *cell;
     Stack *st = allocStack();
@@ -257,10 +260,10 @@ Stack *parse(FILE *fp) {
             continue;
 
         switch (cur) {
-            /*case '"':
-            case '`':
+            case '"':
+            /*case '`':*/
                 cell = consume_string(fp, cur);
-                break;*/
+                break;
             case '.':
                 cell = consume_char(fp);
 /*            case '(':
@@ -291,9 +294,6 @@ int main(int argc, char *argv[]) {
 		err(1, "Couldn't open test.fn");
 
     st = parse(fp);
-	/*while ( fscanf(fp, "%s", word) != EOF ) {
-		push(&st, parseVal(word));
-	}*/
 
 	showStack(st);
 

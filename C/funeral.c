@@ -10,6 +10,8 @@
 /* *************************************************************** */
 
 struct Stack;
+struct Dict;
+struct VM;
 
 typedef enum {
 	typeInt,
@@ -37,6 +39,15 @@ typedef union {
 } Data;
 
 
+typedef void (*fFunc)(struct VM*);
+
+typedef struct Dict {
+	struct Dict *dict;
+	fFunc *fun;
+	char *name;
+} Dict;
+
+
 /* Stack data type */
 
 typedef struct Cell {
@@ -50,23 +61,44 @@ typedef struct Stack {
 	Cell *end; /* we do heavy appending, so a tail-pointer is more than a nice-to-have! */
 } Stack;
 
+typedef struct VM {
+	Stack *stack;
+	Dict *dict;
+	FILE *src;
+} VM;
+
+
+
+/* Dictionary data type */
 
 /* *************************************************************** */
 /* *** Stack manipulation                                      *** */
 /* *************************************************************** */
 
-void push(Stack *s, Cell *word) {
+void push(VM *vm, Cell *word) {
+	Stack *s = vm->stack;
 	word->next = s->top;
 	if ( s->top == NULL ) /* set the tail pointer */
 		s->end = word;
 	s->top = word;
 }
 
-Cell *pop(Stack *s) {
+Cell *pop(VM *vm) {
+	Stack *s = vm->stack;
 	Cell *c = s->top;
 	if (c != NULL)
 		s->top = c->next;
 	return c;
+}
+
+Data peek(VM *vm) {
+	Stack *s = vm->stack;
+	return s->top->val;
+}
+
+void poke(VM *vm, Data d) {
+	Stack *s = vm->stack;
+	s->top->val = d;
 }
 
 
@@ -75,12 +107,7 @@ Cell *pop(Stack *s) {
 /* *************************************************************** */
 
 
-typedef struct VM {
-	Stack s;
-	Stack dict;
-} VM;
-
-Stack *allocStack() {
+Stack *allocStack(VM *vm) {
 	Stack *s;
 	if (! (s = malloc(sizeof(Stack))) )
 		err(1, "Couldn't allocate space for a new stack");
@@ -89,7 +116,8 @@ Stack *allocStack() {
 	return s;
 }
 
-Cell *allocCell() {
+Cell *allocCell(VM *vm) {
+	Stack *s = vm->stack;
 	Cell *c;
 	if (! (c = malloc(sizeof(Cell))) )
 		err(1, "Couldn't allocate space for Cell");
@@ -100,7 +128,13 @@ void freeCell(Cell *c) {
 	free(c);
 }
 
-/*Defn *lookup(Stack *dict, char *name) {
+Data popFree(VM *vm) {
+	Cell *c = pop(vm);
+	Data d = c->val;
+	freeCell(c);
+	return d;
+}
+/*Defn *lookup(VM *vm, char *name) {
 	Cell *c = dict->top;
 	while (c != NULL) {
 		if (c->type == typeFun && ( strcmp(name, c->val.word->def) == 0) )
@@ -113,15 +147,56 @@ void freeCell(Cell *c) {
 
 /* primitives */
 
-void primAdd(Stack *s) {
+void primAdd(VM *vm) {
+	int n = popFree(vm).n;
+	Data d;
+	d.n = peek(vm).n + n;
+	poke(vm, d);
+}
+void primSub(VM *vm) {
+	Stack *s = vm->stack;
+	int n = popFree(vm).n;
+	Data d;
+	d.n = peek(vm).n - n;
+	poke(vm, d);
+}
+void primMul(VM *vm) {
+	Stack *s = vm->stack;
+	int n = popFree(vm).n;
+	Data d;
+	d.n = peek(vm).n * n;
+	poke(vm, d);
+}
+void primDiv(VM *vm) {
+	Stack *s = vm->stack;
+	int n = popFree(vm).n;
+	Data d;
+	d.n = peek(vm).n / n;
+	poke(vm, d);
+}
+
+void primPrepend(VM *vm) {
+	Stack *s = vm->stack;
+
+}
+
+void primAppend(VM *vm) {
+	/* append the quotation on the top of the stack to the quotation that is second-to-top */
+	Stack *s = vm->stack;
+	Cell *tq = pop(vm);
+
 
 }
 
 
 /* Pretty printer */
 
-void showStack(Stack *s); /* pre-declare so we can use it recursively */
-void showCell(Cell *c) {
+void showStack(Stack *s, int depth); /* pre-declare so we can use it recursively */
+void showCell(Cell *c, int depth) {
+	int i = 0;
+	for (i=0; i<depth; i++)
+		printf("\t");
+
 	if (c->type == typeInt)
 		printf("%d\n", c->val.n);
 	else if (c->type == typeBool)
@@ -132,16 +207,18 @@ void showCell(Cell *c) {
 		printf(".%c\n", c->val.n);
 	else if (c->type == typeQuot) {
 		printf("[\n");
-		showStack(c->val.quot);
+		showStack(c->val.quot, depth+1);
+		for (i=0; i<depth; i++)
+			printf("\t");
 		printf("]\n");
 	} else /* word */
 		printf("%s\n", c->val.str);
 }
 
-void showStack(Stack *s) {
+void showStack(Stack *s, int depth) {
 	Cell *c = s->top;
 	while (c != NULL) {
-		showCell(c);
+		showCell(c, depth);
 		c = c->next;
 	}
 }
@@ -172,7 +249,8 @@ int pred_double_quoted_string(int ch) {
 	return (ch != '"');
 }
 
-char *consume_while_true(FILE *fp, pPredicate predicate ) {
+char *consume_while_true(VM *vm, pPredicate predicate ) {
+	FILE *fp = vm->src;
 	char *buf;
 	int ch, len = -1;
 	int pos = ftell(fp);
@@ -196,16 +274,17 @@ char *consume_while_true(FILE *fp, pPredicate predicate ) {
 	return buf;
 }
 
-char *consume_comment(FILE *fp) {
-	return consume_while_true(fp, &pred_not_eol);
+char *consume_comment(VM *vm) {
+	return consume_while_true(vm, &pred_not_eol);
 }
-Cell *consume_word(FILE *fp) {
-    Cell *c = allocCell();
+Cell *consume_word(VM *vm) {
+	FILE *fp = vm->src;
+	Cell *c = allocCell(vm);
     char *buf, *remainder;
     long pos = ftell(fp);
     int i;
 
-	buf = consume_while_true(fp, &pred_not_whitespace);
+	buf = consume_while_true(vm, &pred_not_whitespace);
 
     i = strtol(buf, &remainder, 0);
 
@@ -215,7 +294,7 @@ Cell *consume_word(FILE *fp) {
         free(buf);
 	} else if (strcmp(buf, "True") == 0) {
 		c->type = typeBool;
-		c->val.n = -1;
+		c->val.n = 1;
         free(buf);
 	} else if (strcmp(buf, "False") == 0) {
 		c->type = typeBool;
@@ -223,16 +302,17 @@ Cell *consume_word(FILE *fp) {
         free(buf);
     } else if (strcmp(buf, "--") == 0) {
         c->type = typeComm;
-        c->val.str = consume_comment(fp);
+        c->val.str = consume_comment(vm);
 	} else {
 		c->type = typeWord;
 		c->val.str = buf;
 	}
     return c;
 }
-Cell *consume_char(FILE *fp) {
+Cell *consume_char(VM *vm) {
 	/* TODO: add basic support for multi-byte UTF-8 chars */
-    Cell *c = allocCell();
+	FILE *fp = vm->src;
+    Cell *c = allocCell(vm);
     int ch = fgetc(fp);
     if (ch == EOF)
         err(1, "Parse error: expected char literal, but found end of file.");
@@ -240,33 +320,38 @@ Cell *consume_char(FILE *fp) {
     c->val.n = ch;
     return c;
 }
-Cell *consume_string(FILE *fp, char delim) {
+Cell *consume_string(VM *vm, char delim) {
 	/* TODO: conversion to linked list */
 	/* TODO: unescaping of escaped characters */
-    Cell *c = allocCell();
+	FILE *fp = vm->src;
+    Cell *c = allocCell(vm);
     char *buf;
 
-	buf = consume_while_true(fp, &pred_double_quoted_string);
+	buf = consume_while_true(vm, &pred_double_quoted_string);
 	fgetc(fp); /* discard closing quote */
 	c->type = typeStr;
 	c->val.str = buf;
 
 	return c;
 }
-Stack *parse(FILE *fp, char terminator); /* pre-declare so we can parse recursively */
-Cell *consume_quotation(FILE *fp, char terminator) {
-	Cell *c = allocCell();
-	Stack *s = parse(fp, terminator);
+void parse(VM *vm, char terminator); /* pre-declare so we can parse recursively */
+Cell *consume_quotation(VM *vm, char terminator) {
+	Cell *c = allocCell(vm);
+	parse(vm, terminator);
 	c->type = typeQuot;
-	c->val.quot = s;
+	c->val.quot = vm->stack;
 	return c;
 }
 
-Stack *parse(FILE *fp, char terminator) {
+void parse(VM *vm, char terminator) {
     int c;
-    char cur;
+    char cur, term=']';
+	FILE *fp = vm->src;
     Cell *cell;
-    Stack *st = allocStack();
+    Stack *st = allocStack(vm);
+
+	if (vm->stack == NULL)
+		vm->stack = st;
 
     while ( (c = fgetc(fp)) != terminator ) {
         cur = (char) c;
@@ -276,24 +361,23 @@ Stack *parse(FILE *fp, char terminator) {
         switch (cur) {
             case '"':
             /*case '`':*/
-                cell = consume_string(fp, cur);
+                cell = consume_string(vm, cur);
                 break;
             case '.':
-                cell = consume_char(fp);
+                cell = consume_char(vm);
 				break;
             case '(':
-				cell = consume_quotation(fp, ')');
-				break;
+				term = ')';  /* this falls-through... */
             case '[':
-                cell = consume_quotation(fp, ']');
+                cell = consume_quotation(vm, term);
+				term = ']'; /* reset to default for next iteration */
                 break;
             default:
                 ungetc(c, fp);
-                cell = consume_word(fp);
+                cell = consume_word(vm);
         }
-        push(st, cell);
+        push(vm, cell);
     }
-    return st;
 }
 
 
@@ -302,17 +386,21 @@ Stack *parse(FILE *fp, char terminator) {
 int main(int argc, char *argv[]) {
 	char word[1024];
 	FILE *fp;
+	VM vm;
 	int i;
-	Stack *st;
 	Cell *c;
+
+	vm.stack = NULL;
+	vm.dict = NULL;
 
 	fp = fopen("test.fn", "r");
 	if (!fp)
 		err(1, "Couldn't open test.fn");
+	vm.src = fp;
 
-    st = parse(fp, EOF);
+    parse(&vm, EOF);
 
-	showStack(st);
+	showStack(vm.stack, 0);
 
 	return 0;
 }

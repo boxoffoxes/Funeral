@@ -1,0 +1,18 @@
+queens 8
+
+def queens [
+	length gen dup 
+]
+
+def gen [ -- n nq
+	doif
+		'[]
+		[ concatMap gen - 1 dup dip 'gen1 ]
+	= 0 dup
+]
+
+def gen1 [
+	
+]
+
+def concatMap [ concat map ]

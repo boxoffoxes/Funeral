@@ -1,9 +1,9 @@
 module Main where
 
-import System( getArgs )
-import Char
-import IO (readFile)
-import List (nubBy, partition, intersperse)
+import System.IO (readFile)
+import System.Environment ( getArgs )
+import Data.Char
+import Data.List (nubBy, partition, intersperse)
 
 import Debug.Trace
 
@@ -60,7 +60,9 @@ instance Show Expr where
 type Id = String
 type Prog = [ Expr ]
 type Library = [ Definition ]
-type State = (Library, Prog)
+type Input = [ String ]
+type Output = [ String ]
+type State = (Library, Prog, Input, Output)
 
 digit :: Parser Char
 digit = satisfy isDigit
@@ -310,45 +312,45 @@ miscFunctions = [
 -- State -> State functions
 
 fnForget :: State -> State
-fnForget (l, Quot [Word id]:st) = (l', st)
+fnForget (l, Quot [Word id]:st, i, o) = (l', st, i, o)
     where
         l' = tail $ getContext id l
-fnForget (l, st) = barf st "forget takes a single quoted word as an argument."
+fnForget (l, st, i, o) = barf st "forget takes a single quoted word as an argument."
 
 fnDef :: State -> State
-fnDef (l, Word id:Quot es:st)        = (Defn id (expand l es):l, st)
-fnDef (l, Quot [Word id]:Quot es:st) = (Defn id (expand l es):l, st) -- Need to pre-process and sub-in 
-fnDef (l, Word id:e:st)  = barf st "Definitions must be quoted"
+fnDef (l, Word id:Quot es:st, i, o)        = (Defn id (expand l es):l, st, i, o)
+fnDef (l, Quot [Word id]:Quot es:st, i, o) = (Defn id (expand l es):l, st, i, o) -- Need to pre-process and sub-in 
+fnDef (l, Word id:e:st, i, o)  = barf st "Definitions must be quoted"
 --fnDef (l, Fun id _:st) = barf st $ "Attempted to redefine the word " ++ id ++ ". If you meant to do this call \n\tdef '" ++ id ++ " [...\ninstead"
-fnDef (l, e:st) = barf st $ "Can't define " ++ show e
+fnDef (l, e:st, i, o) = barf st $ "Can't define " ++ show e
 
 fnApply :: State -> State
-fnApply (l, Fun _ f:st)     = descend (l', st')
+fnApply (l, Fun _ f:st, i, o)     = descend (l', st', i, o)
     where
-        (l', st') = f (l, st)
-fnApply (l, Quot es:st)   = descend (l, es ++ st)
-fnApply (l, e:st)         = barf st $ "Don't know how to apply " ++ show e
+        (l', st', i, o) = f (l, st, i, o)
+fnApply (l, Quot es:st, i, o)   = descend (l, es ++ st, i, o)
+fnApply (l, e:st, i, o)         = barf st $ "Don't know how to apply " ++ show e
 
 fnDig :: State -> State
-fnDig (l, Num n:Quot q:st) = (l', es ++ st')
+fnDig (l, Num n:Quot q:st, i, o) = (l', es ++ st', i, o)
     where
         es = take n st
-        (l', st') = fnApply (l, Quot q:(drop n st))
+        (l', st', i, o) = fnApply (l, Quot q:(drop n st), i, o)
 
 fnDefined :: State -> State
-fnDefined (l, Quot [Word w]:st) = case getContext w l of
-                                    [] -> (l, Bool False:st)
-                                    _  -> (l, Bool True:st)
-fnDefined (l, st) = barf st "defined called on a value other than a quoted word"
+fnDefined (l, Quot [Word w]:st, i, o) = case getContext w l of
+                                    [] -> (l, Bool False:st, i, o)
+                                    _  -> (l, Bool True:st, i, o)
+fnDefined (l, st, i, o) = barf st "defined called on a value other than a quoted word"
 
 fnEval :: State -> State
-fnEval t@(l, [])       = t
-fnEval (l, Word w:st)  = case getContext w l of
-                          []                -> (l, Word w:st)
-                          (Defn _ es:_)     -> descend (l, es ++ st)
-fnEval t@(l, Fun _ f:st) = fnApply t
-fnEval (l, Comm _:st)  = (l, st)
-fnEval (l, e:st)       = (l, e:st)
+fnEval t@(l, [], i, o)       = t
+fnEval (l, Word w:st, i, o)  = case getContext w l of
+                          []                -> (l, Word w:st, i, o)
+                          (Defn _ es:_)     -> descend (l, es ++ st, i, o)
+fnEval t@(l, Fun _ f:st, i, o) = fnApply t
+fnEval (l, Comm _:st, i, o)  = (l, st, i, o)
+fnEval (l, e:st, i, o)       = (l, e:st, i, o)
 
 
 -- utility functions
@@ -370,10 +372,10 @@ expand l []          = []
 
 
 descend :: State -> State
-descend (l, []) = (l, [])
-descend (l, e:st) = fnEval (l', e:st')
+descend (l, [], i, o) = (l, [], i, o)
+descend (l, e:st, i, o) = fnEval (l', e:st', i, o)
     where
-        (l', st') = descend (l, st)
+        (l', st', i, o) = descend (l, st, i, o)
 
 numericBinaryPrim :: (Int -> Int -> Int) -> Prog -> Prog
 numericBinaryPrim f (Num y  : Num x  : st) = (Num  (f x y) : st)
@@ -383,7 +385,7 @@ primDef :: (String, State -> State) -> Definition
 primDef (id, f) = Defn id [Fun id f]
 
 promoteProgFn :: (Prog -> Prog) -> State -> State
-promoteProgFn f (l, st) = (l, f st)
+promoteProgFn f (l, st, i, o) = (l, f st, i, o)
 
 format :: Expr -> String
 format (Quot es) = case all isChr es of
@@ -426,6 +428,8 @@ barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
 showAst :: Prog -> String
 showAst st = concat $ intersperse "\n" $ map show st
 
+showState :: State -> String
+showState (l, st, i, o) = concat o
 
 main :: IO ()
 main = do
@@ -433,6 +437,6 @@ main = do
     args <- getArgs
     sources <- mapM readFile (args ++ ["lib/headstone.fn"])
     let prog = ( parse $ concat sources )
-    let result = showAst $ snd $ descend (prims, prog)
+    let result = showState $ descend (prims, prog, [], [])
     putStrLn result
 

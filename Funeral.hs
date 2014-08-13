@@ -18,7 +18,7 @@ data Expr = Word Id
           | Fun Id (State -> State)
           -- | Def Id [Expr]
           | Comm String
-data Definition = Defn Id Prog
+data Definition = Defn Id Prog deriving Show
 
 instance Eq Expr where
     Word w == Word x    =    w == x
@@ -52,7 +52,7 @@ instance Show Expr where
     show (Quot es) = case all isChar es of
             True  -> show ( map (\(Chr c) -> c) es )
             False -> "[" ++ (concat $ intersperse " " $ map show es) ++ "]"
-    show (Fun id _) = "<prim:" ++ id ++ ">"
+    show (Fun id _) = ":" ++ id
     -- show (Def id es) = "def " ++ id ++ " " ++ ( show $ Quot es )
     show (Comm s) = "" -- "-- " ++ s ++ "\n"
 
@@ -260,10 +260,6 @@ listManipulationFunctions = [
 fnError :: Prog -> Prog
 fnError (msg:st) = barf st (show msg)
 
-fnPrint :: Prog -> Prog
-fnPrint (e:st) = trace (format e) st
-fnPrint [] = trace "" []
-
 fnTrace :: Prog -> Prog
 fnTrace (e:st) = trace ("+++ Trace: " ++ (show e) ) (e:st)
 
@@ -300,7 +296,6 @@ fnStringToWord st = barf st "stringToWord only accepts string argument."
 
 miscFunctions = [
     ( "show",     promoteProgFn $ fnShow ),
-    ( "print",    promoteProgFn $ fnPrint ),
     ( "trace",    promoteProgFn $ fnTrace ),
     ( "traceAll", promoteProgFn $ fnTraceAll ),
 	( "isString", promoteProgFn $ fnIsString ),
@@ -315,34 +310,35 @@ fnForget :: State -> State
 fnForget (l, Quot [Word id]:st, i, o) = (l', st, i, o)
     where
         l' = tail $ getContext id l
-fnForget (l, st, i, o) = barf st "forget takes a single quoted word as an argument."
+fnForget t = barfPlus t "forget takes a single quoted word as an argument."
 
 fnDef :: State -> State
 fnDef (l, Word id:Quot es:st, i, o)        = (Defn id (expand l es):l, st, i, o)
 fnDef (l, Quot [Word id]:Quot es:st, i, o) = (Defn id (expand l es):l, st, i, o) -- Need to pre-process and sub-in 
-fnDef (l, Word id:e:st, i, o)  = barf st "Definitions must be quoted"
+fnDef t@(l, Word id:e:st, i, o)  = barfPlus t "Definitions must be quoted"
 --fnDef (l, Fun id _:st) = barf st $ "Attempted to redefine the word " ++ id ++ ". If you meant to do this call \n\tdef '" ++ id ++ " [...\ninstead"
-fnDef (l, e:st, i, o) = barf st $ "Can't define " ++ show e
-
-fnApply :: State -> State
-fnApply (l, Fun _ f:st, i, o)     = descend (l', st', i, o)
-    where
-        (l', st', i, o) = f (l, st, i, o)
-fnApply (l, Quot es:st, i, o)   = descend (l, es ++ st, i, o)
-fnApply (l, e:st, i, o)         = barf st $ "Don't know how to apply " ++ show e
+fnDef t@(l, e:st, i, o) = barfPlus t $ "Can't define " ++ show e
 
 fnDig :: State -> State
 fnDig (l, Num n:Quot q:st, i, o) = (l', es ++ st', i, o)
     where
         es = take n st
-        (l', st', i, o) = fnApply (l, Quot q:(drop n st), i, o)
+        (l', st', i', o') = fnApply (l, Quot q:(drop n st), i, o)
 
 fnDefined :: State -> State
 fnDefined (l, Quot [Word w]:st, i, o) = case getContext w l of
                                     [] -> (l, Bool False:st, i, o)
                                     _  -> (l, Bool True:st, i, o)
-fnDefined (l, st, i, o) = barf st "defined called on a value other than a quoted word"
+fnDefined t@(l, st, i, o) = barfPlus t "defined called on a value other than a quoted word"
 
+-- Apply a function or quotation to transform the AST
+fnApply :: State -> State
+fnApply t@(l, Fun _ f:st, i, o)     = descend $ f (l, st, i, o)
+fnApply (l, Quot es:st, i, o)       = descend (l, es ++ st, i, o)
+fnApply t@(l, e:st, i, o)             = barfPlus t $ "Don't know how to apply " ++ show e
+
+-- Work out what to do with each different type of expression encountered in the AST:
+-- possibilities are: leave unchanged, delete, apply, or descend
 fnEval :: State -> State
 fnEval t@(l, [], i, o)       = t
 fnEval (l, Word w:st, i, o)  = case getContext w l of
@@ -352,31 +348,40 @@ fnEval t@(l, Fun _ f:st, i, o) = fnApply t
 fnEval (l, Comm _:st, i, o)  = (l, st, i, o)
 fnEval (l, e:st, i, o)       = (l, e:st, i, o)
 
+-- Descend the program's AST looking for expressions that can be evaluated.
+descend :: State -> State
+descend t@(l, [], i, o) = t
+descend (l, e:st, i, o) = fnEval (l', e:st', i', o')
+    where
+        (l', st', i', o') = descend (l, st, i, o)
+
+fnPrint :: State -> State
+fnPrint (l, e:st, i, o) = (l, st, i, format e:o)
+fnPrint t@(_, [], i, o)   = barfPlus t "Attempt to call 'print' on empty stack"
+
 
 -- utility functions
 isChar (Chr _) = True
 isChar _ = False
 
+-- return the subset of a library visible to a particular word
 getContext :: Id -> Library -> Library
 getContext w l = dropWhile notMyDef l
     where
         notMyDef (Defn id _) = id /= w
 
+-- Recursively replace Quotations and defined Words with their definitions. For 
+-- use in defining a new word
 expand :: Library -> Prog -> Prog
 expand l (Word w:st) = case getContext w l of
-                        [] -> Word w : expand l st
+                        [] -> Word w : expand l st  -- word not defined. Push literal
                         (Defn _ es : l') -> expand l' es ++ expand l st
 expand l (Quot q:st) = Quot (expand l q) : expand l st
 expand l (e:st)      = e:(expand l st)
 expand l []          = []
 
 
-descend :: State -> State
-descend (l, [], i, o) = (l, [], i, o)
-descend (l, e:st, i, o) = fnEval (l', e:st', i, o)
-    where
-        (l', st', i, o) = descend (l, st, i, o)
-
+-- Promote a Haskell binary prim to a side-effect-free word
 numericBinaryPrim :: (Int -> Int -> Int) -> Prog -> Prog
 numericBinaryPrim f (Num y  : Num x  : st) = (Num  (f x y) : st)
 -- numericBinaryPrim f st = Fun _ (promoteProgFn $ numericBinaryPrim f):st
@@ -390,7 +395,7 @@ promoteProgFn f (l, st, i, o) = (l, f st, i, o)
 format :: Expr -> String
 format (Quot es) = case all isChr es of
         True -> map (\(Chr c) -> c) es
-        False -> error "Don't know how to format a non-string quotation."
+        False -> error $ "Don't know how to format a non-string quotation: " ++ show (Quot es)
     where
         isChr (Chr _) = True
         isChr _ = False
@@ -411,6 +416,7 @@ stateFunctions = stackManipulationFunctions
                    ("apply", fnApply),
                    ("defined", fnDefined ),
                    ("eval", fnEval ),
+                   ( "print", fnPrint ),
                    ("def", fnDef ) ]
 
 prims = map primDef stateFunctions
@@ -425,18 +431,28 @@ prims = map primDef stateFunctions
 barf :: Prog -> String -> a
 barf st msg = error $ "** Error: " ++ msg ++ "\nAt\n   " ++ showAst st ++ "\n\n"
 
+barfPlus :: State -> String -> a
+barfPlus t msg = error $ "** Error: " ++ msg ++ "\nAt\n " ++ showState t ++ "\n\n"
+
 showAst :: Prog -> String
 showAst st = concat $ intersperse "\n" $ map show st
 
 showState :: State -> String
-showState (l, st, i, o) = concat o
+showState t@(l, st, i, o) = concat [ "\n ++ Library: " ++ (concat $ intersperse "\n\t" $ map show l) , "\n ++ Unprocessed AST: " ++ show st , "\n ++ Unprocessed input: " ++ show i , "\n ++ Generated output: " ++ show o ]
+
+showOutput :: State -> String
+showOutput (_, _, _, os) = concat $ intersperse "\n" os
 
 main :: IO ()
 main = do
 	-- hSetEncoding stderr utf8
     args <- getArgs
-    sources <- mapM readFile (args ++ ["lib/headstone.fn"])
+--    sources <- mapM readFile (args ++ ["lib/headstone.fn"])
+    sources <- mapM readFile args
     let prog = ( parse $ concat sources )
-    let result = showState $ descend (prims, prog, [], [])
-    putStrLn result
+    let result = descend (prims, prog, [], [])
+    let output = case result of 
+            ( _, [], _, _ ) -> showOutput result
+            _               -> showState result
+    putStrLn output
 

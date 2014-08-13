@@ -17,7 +17,7 @@
 
 --break [a b]
 
-TEST [ overlay [[1 2] [3 4]] [[3 5] [5 6]] ] [[3 4] [1 2] [5 6]] "overlay"
+--TEST [ overlay [[1 2] [3 4]] [[3 5] [5 6]] ] [[3 4] [1 2] [5 6]] "overlay"
 TEST [ set x z [ [x y] [a b] [k v] ] ] [[x z] [a b] [k v]] "set"
 TEST [ delete x [ [x y] [a b] [k v] ] ] [[a b] [k v]] "delete"
 TEST [ lookup n [ [x y] [a b] [k v] ] ] [] "lookup failure"

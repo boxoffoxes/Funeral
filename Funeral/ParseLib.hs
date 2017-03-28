@@ -1,5 +1,6 @@
 module Funeral.ParseLib where
 
+import Prelude hiding (pure, (<*>))
 import Data.Char
 
 infixr 3 <|>

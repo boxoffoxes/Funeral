@@ -1,5 +1,6 @@
 module Main where
 
+import Prelude hiding (pure, (<*>))
 import System.IO (readFile)
 import System.Environment ( getArgs )
 import Data.Char
